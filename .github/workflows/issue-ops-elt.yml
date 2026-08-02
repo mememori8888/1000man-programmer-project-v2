@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   issues: write
 
 jobs:
@@ -177,7 +178,7 @@ jobs:
     secrets: inherit
     with:
       workflow_type: ${{ needs.parse.outputs.workflow_type }}
-      csv_file: ${{ fromJson(needs.parse.outputs.payload_json).params.csv_file || fromJson(needs.parse.outputs.payload_json).params.fid_file || fromJson(needs.parse.outputs.payload_json).params.custom_settings.address_csv_path || 'settings/address.csv' }}
+      csv_file: ${{ needs.parse.outputs.workflow_type == 'reviews' && (fromJson(needs.parse.outputs.payload_json).params.csv_file || fromJson(needs.parse.outputs.payload_json).params.fid_file || 'results/fid.csv') || (fromJson(needs.parse.outputs.payload_json).params.csv_file || fromJson(needs.parse.outputs.payload_json).params.custom_settings.address_csv_path || 'settings/address.csv') }}
       dataset_id: ${{ fromJson(needs.parse.outputs.payload_json).params.dataset_id || 'gd_luzfs1dn2oa0teb81' }}
       days_back: ${{ fromJson(needs.parse.outputs.payload_json).params.days_back || '10' }}
       skip_column: ${{ fromJson(needs.parse.outputs.payload_json).params.skip_column || '' }}

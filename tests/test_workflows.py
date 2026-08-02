@@ -99,13 +99,22 @@ def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract(
 def test_issue_ops_routes_generic_reviews_to_brightdata_extract():
     workflow_text = Path(".github/workflows/issue-ops-elt.yml").read_text(encoding="utf-8")
 
+    assert "actions: read" in workflow_text
     assert "uses: ./.github/workflows/brightdata-extract.yml" in workflow_text
     assert "uses: ./.github/workflows/raw-elt-ingest.yml" not in workflow_text
     assert "needs.ingest" not in workflow_text
     assert "params.fid_file" in workflow_text
+    assert "results/fid.csv" in workflow_text
     assert "params.start_line" in workflow_text
     assert "params.process_count" in workflow_text
     assert "workflow_type != 'reviews'" not in workflow_text
+
+
+def test_brightdata_extract_supports_manual_reviews_fid_mode():
+    workflow_text = Path(".github/workflows/brightdata-extract.yml").read_text(encoding="utf-8")
+
+    assert "- reviews" in workflow_text
+    assert '[ "${{ inputs.workflow_type }}" = "reviews" ]' in workflow_text
 
 
 def test_issue_ops_report_distinguishes_success_failure_and_links_run():

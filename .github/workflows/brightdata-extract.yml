@@ -8,6 +8,7 @@ on:
         required: true
         type: choice
         options:
+          - reviews
           - reviews_sequential
           - reviews_recent_relevance
           - facility
@@ -156,7 +157,7 @@ jobs:
         id: range
         run: |
           SKIP_COLUMN="${{ inputs.skip_column }}"
-          if [ "${{ inputs.workflow_type }}" = "facility" ]; then
+          if [ "${{ inputs.workflow_type }}" = "facility" ] || [ "${{ inputs.workflow_type }}" = "reviews" ]; then
             SKIP_COLUMN=""
           fi
           START_ROW="${{ inputs.start_row }}"
