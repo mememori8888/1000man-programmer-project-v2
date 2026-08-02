@@ -66,6 +66,9 @@ def test_preflight_workflow_checks_required_runtime_settings():
     assert "Dry-run managed BigQuery transforms" in workflow_text
     assert "elt-bigquery dry-run-all-sql" in workflow_text
     assert "work-bigquery-dry-run.json" in workflow_text
+    assert "### BigQuery transform dry-run" in workflow_text
+    assert "| SQL file | Job ID | Estimated bytes |" in workflow_text
+    assert "total_bytes_processed" in workflow_text
     assert "mememori8888/googlemap" in workflow_text
 
 

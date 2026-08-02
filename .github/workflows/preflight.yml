@@ -148,5 +148,23 @@ jobs:
             echo "- GCP check: ${{ inputs.check_gcp }}"
             if [ -f work-bigquery-dry-run.json ]; then
               echo "- BigQuery transform dry-run: \`work-bigquery-dry-run.json\`"
+              echo ""
+              echo "### BigQuery transform dry-run"
+              echo "| SQL file | Job ID | Estimated bytes |"
+              echo "| --- | --- | ---: |"
+              python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path("work-bigquery-dry-run.json").read_text(encoding="utf-8"))
+          for job in result.get("jobs", []):
+              print(
+                  "| `{}` | `{}` | {} |".format(
+                      job["sql_file"],
+                      job.get("job_id", ""),
+                      job.get("total_bytes_processed", 0),
+                  )
+              )
+          PY
             fi
           } >> "$GITHUB_STEP_SUMMARY"
