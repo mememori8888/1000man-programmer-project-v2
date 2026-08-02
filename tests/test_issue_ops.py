@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from elt_v2.issue_ops import parse_issue_request, to_payload_json, validate_issue_request
+from elt_v2.issue_ops import issue_outputs_from_body, main, parse_issue_request, to_payload_json, validate_issue_request
 
 
 def test_parses_reviews_relevance_before_generic_reviews():
@@ -72,3 +72,23 @@ def test_rejects_non_object_custom_settings():
     errors = validate_issue_request(parse_issue_request(body))
 
     assert "custom_settings must be an object" in errors
+
+
+def test_invalid_json_block_becomes_validation_error():
+    outputs = issue_outputs_from_body("/run-reviews\n\n```json\n{\"fid_file\":\"results/fid.csv\"\n```")
+
+    assert outputs["valid"] == "false"
+    assert "Invalid JSON block" in outputs["validation_errors"]
+    assert outputs["payload_json"] == "{}"
+
+
+def test_issue_ops_cli_writes_invalid_json_validation_outputs(tmp_path):
+    body_path = tmp_path / "issue.md"
+    output_path = tmp_path / "github-output.txt"
+    body_path.write_text("/run-reviews\n\n```json\n{\"fid_file\":\"results/fid.csv\"\n```", encoding="utf-8")
+
+    assert main(["--body-file", str(body_path), "--github-output", str(output_path)]) == 0
+
+    output = output_path.read_text(encoding="utf-8")
+    assert "valid=false" in output
+    assert "validation_errors=Invalid JSON block" in output

@@ -119,18 +119,23 @@ def to_payload_json(request: IssueRequest) -> str:
     return json.dumps(payload, ensure_ascii=False, sort_keys=True)
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Parse a v2 IssueOps request body.")
-    parser.add_argument("--body-file", required=True, type=Path)
-    parser.add_argument("--github-output", type=Path)
-    args = parser.parse_args(argv)
+def issue_outputs_from_body(body: str) -> dict[str, str]:
+    try:
+        request = parse_issue_request(body)
+    except ValueError as exc:
+        return {
+            "command": "",
+            "workflow_type": "",
+            "dataset_kind": "",
+            "params_json": "{}",
+            "payload_json": "{}",
+            "valid": "false",
+            "validation_errors": str(exc),
+        }
 
-    body = args.body_file.read_text(encoding="utf-8")
-    request = parse_issue_request(body)
     errors = validate_issue_request(request)
     payload_json = to_payload_json(request)
-
-    outputs = {
+    return {
         "command": request.command,
         "workflow_type": request.workflow_type,
         "dataset_kind": request.dataset_kind,
@@ -139,6 +144,16 @@ def main(argv: list[str] | None = None) -> int:
         "valid": "true" if not errors else "false",
         "validation_errors": "\n".join(errors),
     }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Parse a v2 IssueOps request body.")
+    parser.add_argument("--body-file", required=True, type=Path)
+    parser.add_argument("--github-output", type=Path)
+    args = parser.parse_args(argv)
+
+    body = args.body_file.read_text(encoding="utf-8")
+    outputs = issue_outputs_from_body(body)
 
     if args.github_output:
         _write_github_outputs(args.github_output, outputs)
