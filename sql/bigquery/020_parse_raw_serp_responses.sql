@@ -13,6 +13,7 @@ with source_rows as (
     loaded_at,
     payload_sha256,
     json_value(raw_payload, '$.request.url') as request_url,
+    json_value(raw_payload, '$.request.facility_id') as request_facility_id,
     json_value(raw_payload, '$.request.zone') as zone_name
   from `${PROJECT_ID}.${DATASET}.raw_serp_responses`
   where dataset_kind = 'serp_relevance'
@@ -25,6 +26,7 @@ rank_items as (
     loaded_at,
     payload_sha256,
     request_url,
+    request_facility_id,
     zone_name,
     rank_source,
     rank_offset + 1 as rank_position,
@@ -59,6 +61,7 @@ normalized as (
       nullif(json_value(item_json, '$.place_id'), ''),
       nullif(json_value(item_json, '$.fid'), ''),
       nullif(json_value(item_json, '$.gid'), ''),
+      nullif(request_facility_id, ''),
       nullif(json_value(item_json, '$.url'), ''),
       nullif(request_url, '')
     ) as facility_id,

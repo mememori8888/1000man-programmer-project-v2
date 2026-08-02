@@ -63,6 +63,7 @@ def test_serp_relevance_extract_workflow_stores_raw_response():
     assert "elt-brightdata run-serp" in workflow_text
     assert "--zone-name" in workflow_text
     assert "--dataset-kind serp_relevance" in workflow_text
+    assert "sql/bigquery/001_create_raw_tables.sql" in workflow_text
     assert "elt-bigquery load-raw" in workflow_text
     assert "ELT_RAW_GCS_BUCKET" in workflow_text
 
@@ -73,6 +74,7 @@ def test_serp_relevance_batch_workflow_builds_matrix_and_stores_raw_responses():
     assert "build-serp-items" in workflow_text
     assert "matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}" in workflow_text
     assert "--dataset-kind serp_relevance" in workflow_text
+    assert "sql/bigquery/001_create_raw_tables.sql" in workflow_text
     assert "elt-bigquery load-raw" in workflow_text
     assert "max-parallel" in workflow_text
     assert "START_FROM_BATCH" in workflow_text

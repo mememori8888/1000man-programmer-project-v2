@@ -45,6 +45,15 @@ def test_review_parser_keeps_input_facility_keys():
     assert "$.fid" in sql
 
 
+def test_serp_parser_uses_request_facility_id_from_envelope():
+    sql = Path("sql/bigquery/020_parse_raw_serp_responses.sql").read_text(encoding="utf-8")
+
+    assert "$.request.facility_id" in sql
+    assert "request_facility_id" in sql
+    assert "nullif(request_facility_id, '')" in sql
+    assert sql.index("nullif(request_facility_id, '')") < sql.index("nullif(json_value(item_json, '$.url'), '')")
+
+
 def test_mart_transforms_preserve_bigquery_physical_design():
     dim_sql = Path("sql/bigquery/011_parse_raw_facilities.sql").read_text(encoding="utf-8").lower()
     reviews_sql = Path("sql/bigquery/101_deduplicate_reviews.sql").read_text(encoding="utf-8").lower()

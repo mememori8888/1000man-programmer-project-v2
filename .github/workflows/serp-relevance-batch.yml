@@ -336,6 +336,10 @@ jobs:
       - name: Load raw row into BigQuery
         if: vars.ELT_RAW_GCS_BUCKET != '' && vars.ELT_BIGQUERY_PROJECT_ID != '' && vars.ELT_BIGQUERY_DATASET != ''
         run: |
+          elt-bigquery run-sql \
+            --sql-file sql/bigquery/001_create_raw_tables.sql \
+            --project-id "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" \
+            --dataset "${{ vars.ELT_BIGQUERY_DATASET }}"
           elt-bigquery load-raw \
             --manifest "${{ steps.local.outputs.manifest_path }}" \
             --payload-file "${{ steps.local.outputs.local_path }}" \
