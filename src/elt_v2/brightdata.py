@@ -78,6 +78,11 @@ class BrightDataDatasetClient:
         return str(snapshot_id)
 
     def wait(self, *, snapshot_id: str, max_wait_seconds: int, poll_interval_seconds: int = 15) -> None:
+        if max_wait_seconds < 1:
+            raise ValueError("max_wait_seconds must be greater than 0")
+        if poll_interval_seconds < 1:
+            raise ValueError("poll_interval_seconds must be greater than 0")
+
         deadline = time.monotonic() + max_wait_seconds
         last_status = ""
         while time.monotonic() < deadline:
@@ -113,6 +118,11 @@ class BrightDataDatasetClient:
         max_wait_minutes: int,
         poll_interval_seconds: int = 15,
     ) -> DatasetSnapshotResult:
+        if max_wait_minutes < 1:
+            raise ValueError("max_wait_minutes must be greater than 0")
+        if poll_interval_seconds < 1:
+            raise ValueError("poll_interval_seconds must be greater than 0")
+
         snapshot_id = self.trigger(dataset_id=dataset_id, items=items)
         self.wait(
             snapshot_id=snapshot_id,

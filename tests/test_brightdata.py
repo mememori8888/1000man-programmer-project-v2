@@ -214,13 +214,51 @@ def test_dataset_client_runs_trigger_progress_snapshot():
         dataset_id="dataset-1",
         items=[{"url": "https://maps.example/1"}],
         max_wait_minutes=1,
-        poll_interval_seconds=0,
+        poll_interval_seconds=1,
     )
 
     assert result.snapshot_id == "snap-1"
     assert result.data == [{"review_id": "r1"}]
     assert session.posts[0][0] == "https://api.brightdata.com/datasets/v3/trigger"
     assert session.posts[0][1]["params"] == {"dataset_id": "dataset-1", "format": "json"}
+
+
+def test_dataset_client_rejects_invalid_wait_config_before_trigger():
+    session = FakeSession()
+    client = BrightDataDatasetClient("token", session=session)
+
+    try:
+        client.run_snapshot(
+            dataset_id="dataset-1",
+            items=[{"url": "https://maps.example/1"}],
+            max_wait_minutes=0,
+            poll_interval_seconds=1,
+        )
+    except ValueError as exc:
+        assert "max_wait_minutes" in str(exc)
+    else:
+        raise AssertionError("expected invalid max_wait_minutes to fail before trigger")
+
+    assert session.posts == []
+
+
+def test_dataset_client_rejects_invalid_poll_interval_before_trigger():
+    session = FakeSession()
+    client = BrightDataDatasetClient("token", session=session)
+
+    try:
+        client.run_snapshot(
+            dataset_id="dataset-1",
+            items=[{"url": "https://maps.example/1"}],
+            max_wait_minutes=1,
+            poll_interval_seconds=0,
+        )
+    except ValueError as exc:
+        assert "poll_interval_seconds" in str(exc)
+    else:
+        raise AssertionError("expected invalid poll_interval_seconds to fail before trigger")
+
+    assert session.posts == []
 
 
 def test_serp_client_posts_request_payload():
