@@ -26,5 +26,11 @@ def test_bigquery_transform_workflow_exposes_registered_sql_files():
         for line in workflow_text.splitlines()
         if line.strip().startswith("- sql/bigquery/")
     ]
+    all_options = [
+        line.strip().removeprefix("- ")
+        for line in workflow_text.splitlines()
+        if line.strip() == "- all"
+    ]
 
+    assert all_options == ["all"]
     assert options == TRANSFORM_SQL_FILES

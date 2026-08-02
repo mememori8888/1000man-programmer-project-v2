@@ -10,6 +10,7 @@ from elt_v2.bigquery_loader import (
     build_raw_table_row,
     load_manifest_file,
     render_sql_template,
+    run_sql_files,
 )
 
 
@@ -126,3 +127,28 @@ def test_transform_sql_file_registry_includes_parse_steps():
     assert TRANSFORM_SQL_FILES.index("sql/bigquery/010_parse_raw_reviews.sql") < TRANSFORM_SQL_FILES.index(
         "sql/bigquery/101_deduplicate_reviews.sql"
     )
+
+
+def test_run_sql_files_preserves_order(monkeypatch):
+    calls = []
+
+    def fake_run_sql_file(path, *, project_id, dataset):
+        calls.append((str(path), project_id, dataset))
+        return f"job-{len(calls)}"
+
+    monkeypatch.setattr("elt_v2.bigquery_loader.run_sql_file", fake_run_sql_file)
+
+    results = run_sql_files(
+        [TRANSFORM_SQL_FILES[0], TRANSFORM_SQL_FILES[1]],
+        project_id="project-123",
+        dataset="brightdata_raw",
+    )
+
+    assert results == [
+        {"sql_file": TRANSFORM_SQL_FILES[0], "job_id": "job-1"},
+        {"sql_file": TRANSFORM_SQL_FILES[1], "job_id": "job-2"},
+    ]
+    assert calls == [
+        (TRANSFORM_SQL_FILES[0], "project-123", "brightdata_raw"),
+        (TRANSFORM_SQL_FILES[1], "project-123", "brightdata_raw"),
+    ]

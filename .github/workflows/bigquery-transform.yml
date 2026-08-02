@@ -10,11 +10,12 @@ on:
         description: BigQuery dataset
         required: true
       sql_file:
-        description: SQL file to run
+        description: SQL file to run, or all managed SQL files
         required: true
-        default: sql/bigquery/101_deduplicate_reviews.sql
+        default: all
         type: choice
         options:
+          - all
           - sql/bigquery/001_create_raw_tables.sql
           - sql/bigquery/002_create_mart_tables.sql
           - sql/bigquery/010_parse_raw_reviews.sql
@@ -42,6 +43,7 @@ jobs:
           pip install ".[gcp]"
 
       - name: Render SQL preview
+        if: inputs.sql_file != 'all'
         run: |
           elt-bigquery render-sql \
             --sql-file "${{ inputs.sql_file }}" \
@@ -50,9 +52,21 @@ jobs:
             > rendered.sql
           cat rendered.sql
 
-      - name: Run SQL
+      - name: List managed SQL files
+        if: inputs.sql_file == 'all'
+        run: elt-bigquery list-sql
+
+      - name: Run selected SQL
+        if: inputs.sql_file != 'all'
         run: |
           elt-bigquery run-sql \
             --sql-file "${{ inputs.sql_file }}" \
+            --project-id "${{ inputs.project_id }}" \
+            --dataset "${{ inputs.dataset }}"
+
+      - name: Run all managed SQL
+        if: inputs.sql_file == 'all'
+        run: |
+          elt-bigquery run-all-sql \
             --project-id "${{ inputs.project_id }}" \
             --dataset "${{ inputs.dataset }}"

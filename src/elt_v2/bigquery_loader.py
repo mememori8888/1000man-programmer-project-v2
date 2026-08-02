@@ -130,6 +130,14 @@ def run_sql_file(path: Path, *, project_id: str, dataset: str) -> str:
     return query_job.job_id
 
 
+def run_sql_files(paths: list[Path], *, project_id: str, dataset: str) -> list[dict[str, str]]:
+    results = []
+    for path in paths:
+        job_id = run_sql_file(path, project_id=project_id, dataset=dataset)
+        results.append({"sql_file": str(path), "job_id": job_id})
+    return results
+
+
 def _validate_identifier(value: str, name: str, *, allow_dash: bool = False) -> None:
     pattern = r"^[A-Za-z_][A-Za-z0-9_]*$"
     if allow_dash:

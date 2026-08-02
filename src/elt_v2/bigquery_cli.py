@@ -11,6 +11,7 @@ from elt_v2.bigquery_loader import (
     load_raw_payload_to_bigquery,
     render_sql_template,
     run_sql_file,
+    run_sql_files,
 )
 
 
@@ -40,6 +41,10 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.add_argument("--sql-file", required=True, type=Path)
     run_parser.add_argument("--project-id", required=True)
     run_parser.add_argument("--dataset", required=True)
+
+    run_all_parser = subparsers.add_parser("run-all-sql", help="Run managed SQL files in dependency order.")
+    run_all_parser.add_argument("--project-id", required=True)
+    run_all_parser.add_argument("--dataset", required=True)
 
     list_parser = subparsers.add_parser("list-sql", help="List managed BigQuery SQL files.")
     list_parser.set_defaults(list_sql=True)
@@ -86,6 +91,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "run-sql":
         job_id = run_sql_file(args.sql_file, project_id=args.project_id, dataset=args.dataset)
         print(json.dumps({"job_id": job_id}, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-all-sql":
+        results = run_sql_files(
+            [Path(filename) for filename in TRANSFORM_SQL_FILES],
+            project_id=args.project_id,
+            dataset=args.dataset,
+        )
+        print(json.dumps({"jobs": results}, ensure_ascii=False, indent=2))
         return 0
 
     parser.error(f"unsupported command: {args.command}")
