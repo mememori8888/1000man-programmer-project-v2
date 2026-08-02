@@ -151,6 +151,10 @@ def test_raw_ingest_workflow_writes_step_summary():
     assert "Raw ELT ingest" in workflow_text
     assert "GITHUB_STEP_SUMMARY" in workflow_text
     assert "GCS raw object" in workflow_text
+    assert "- serp_relevance" in workflow_text
+    assert "sql/bigquery/001_create_raw_tables.sql" in workflow_text
+    assert "elt-bigquery run-all-sql" in workflow_text
+    assert "run_transform" in workflow_text
 
 
 def test_compatibility_audit_workflow_uses_private_csv_and_bigquery_diff():

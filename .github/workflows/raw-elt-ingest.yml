@@ -10,6 +10,7 @@ on:
         options:
           - reviews
           - facilities
+          - serp_relevance
       payload_json:
         description: Raw request or BrightData payload JSON
         required: true
@@ -29,6 +30,14 @@ on:
         description: Optional BigQuery dataset
         required: false
         default: ""
+      run_transform:
+        description: Run managed BigQuery transform SQL after raw load
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
   workflow_call:
     inputs:
       dataset_kind:
@@ -52,6 +61,10 @@ on:
         required: false
         type: string
         default: ""
+      run_transform:
+        required: false
+        type: string
+        default: "true"
     secrets:
       GCP_SERVICE_ACCOUNT_JSON:
         required: false
@@ -137,12 +150,23 @@ jobs:
       - name: Load raw row into BigQuery
         if: inputs.gcs_bucket != '' && inputs.bigquery_project_id != '' && inputs.bigquery_dataset != ''
         run: |
+          elt-bigquery run-sql \
+            --sql-file sql/bigquery/001_create_raw_tables.sql \
+            --project-id "${{ inputs.bigquery_project_id }}" \
+            --dataset "${{ inputs.bigquery_dataset }}"
           elt-bigquery load-raw \
             --manifest "${{ steps.local.outputs.manifest_path }}" \
             --payload-file "${{ steps.local.outputs.local_path }}" \
             --project-id "${{ inputs.bigquery_project_id }}" \
             --dataset "${{ inputs.bigquery_dataset }}" \
             --source-uri "gs://${{ inputs.gcs_bucket }}/${{ steps.local.outputs.object_name }}"
+
+      - name: Run BigQuery transforms
+        if: inputs.run_transform == 'true' && inputs.gcs_bucket != '' && inputs.bigquery_project_id != '' && inputs.bigquery_dataset != ''
+        run: |
+          elt-bigquery run-all-sql \
+            --project-id "${{ inputs.bigquery_project_id }}" \
+            --dataset "${{ inputs.bigquery_dataset }}"
 
       - name: Upload raw artifact
         uses: actions/upload-artifact@v4
@@ -166,6 +190,7 @@ jobs:
             fi
             if [ -n "${{ inputs.bigquery_project_id }}" ] && [ -n "${{ inputs.bigquery_dataset }}" ]; then
               echo "- BigQuery raw table target: \`${{ inputs.bigquery_project_id }}.${{ inputs.bigquery_dataset }}\`"
+              echo "- BigQuery transform: \`${{ inputs.run_transform }}\`"
             fi
             echo "- artifact: \`raw-elt-${{ inputs.dataset_kind }}-${{ github.run_id }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
