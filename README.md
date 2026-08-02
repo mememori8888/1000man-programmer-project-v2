@@ -40,6 +40,7 @@
 - `BRIGHTDATA_API_TOKEN`
 - `PRIVATE_REPO_PAT`
 - `BRIGHTDATA_ZONE_NAME` optional, default `serp_api2`
+- `GCP_SERVICE_ACCOUNT_JSON` optional, GCS/BigQuery 連携を有効にする場合に設定
 
 GCS/BigQuery 連携を有効にする場合は、GitHub repository variables に次を設定します。
 
