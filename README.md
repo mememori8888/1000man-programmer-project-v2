@@ -45,6 +45,7 @@
 GCS/BigQuery 連携を有効にする場合は、GitHub repository variables に次を設定します。
 
 - `ELT_RAW_GCS_BUCKET`
+- `ELT_EXPORT_GCS_BUCKET` optional, CSV export 先を raw bucket と分ける場合に設定
 - `ELT_BIGQUERY_PROJECT_ID`
 - `ELT_BIGQUERY_DATASET`
 
@@ -228,7 +229,7 @@ where row_num = 1;
 - `.github/workflows/raw-elt-ingest.yml`: 手動実行または将来の再利用ワークフローから raw object と manifest を生成する。
 - `.github/workflows/raw-object-replay.yml`: GCS 上の raw object と manifest を BigQuery raw table へ再投入する復旧 workflow。
 - `.github/workflows/bigquery-transform.yml`: BigQuery SQL を単体または標準順序の `all` で手動実行する変換 workflow。
-- `.github/workflows/bigquery-export.yml`: `fact_reviews`, `dim_facilities`, `fact_review_relevance_ranks` を GCS へ CSV export する互換 workflow。
+- `.github/workflows/bigquery-export.yml`: `fact_reviews`, `dim_facilities`, `fact_review_relevance_ranks` を GCS へ CSV export する互換 workflow。IssueOps では `ELT_EXPORT_GCS_BUCKET` があればそこへ、なければ `ELT_RAW_GCS_BUCKET` の `exports/` 配下へ出力する。
 - `.github/workflows/compatibility-audit.yml`: private repo の旧CSVを BigQuery 一時監査テーブルへロードし、v2 mart との件数・キー差分を確認する workflow。
 - `docs/webapp/`: v2 repo に Issue を作成する軽量 WebApp。
 - `sql/bigquery/`: BigQuery の raw table、raw payload 解析、mart table、レビュー重複排除、関連度ランク fact 生成 SQL。

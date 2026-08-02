@@ -30,8 +30,12 @@ def test_brightdata_extract_does_not_emit_raw_payload_as_job_output():
 def test_bigquery_export_workflow_uses_gcs_csv_destination():
     workflow_text = Path(".github/workflows/bigquery-export.yml").read_text(encoding="utf-8")
 
+    assert "workflow_call:" in workflow_text
     assert "elt-bigquery export-csv" in workflow_text
     assert "--destination-uri" in workflow_text
+    assert "Resolve destination URI" in workflow_text
+    assert "legacy_output_path" in workflow_text
+    assert "exports" in workflow_text
     assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text
     assert "fact_reviews" in workflow_text
     assert "dim_facilities" in workflow_text
@@ -46,6 +50,7 @@ def test_preflight_workflow_checks_required_runtime_settings():
     assert "PRIVATE_REPO_PAT" in workflow_text
     assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text
     assert "ELT_RAW_GCS_BUCKET" in workflow_text
+    assert "ELT_EXPORT_GCS_BUCKET" in workflow_text
     assert "ELT_BIGQUERY_PROJECT_ID" in workflow_text
     assert "ELT_BIGQUERY_DATASET" in workflow_text
     assert "get_dataset" in workflow_text
@@ -110,11 +115,20 @@ def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract(
     assert "ELT_RAW_GCS_BUCKET" in workflow_text
     assert "needs.config.outputs.valid == 'true'" in workflow_text
     assert "serp_relevance:" in workflow_text
+    assert "export_reviews:" in workflow_text
+    assert "export_relevance:" in workflow_text
+    assert "uses: ./.github/workflows/bigquery-export.yml" in workflow_text
     assert "uses: ./.github/workflows/serp-relevance-batch.yml" in workflow_text
     assert "needs: [parse, extract]" in workflow_text
     assert "workflow_type == 'reviews_recent_relevance'" in workflow_text
     assert "target_source: bigquery_recent_reviews" in workflow_text
     assert "params.relevance_rank_limit" in workflow_text
+    assert "params.output_file" in workflow_text
+    assert "params.summary_file" in workflow_text
+    assert "dim_facilities" in workflow_text
+    assert "ELT_EXPORT_GCS_BUCKET" in workflow_text
+    assert "fact_reviews export" in workflow_text
+    assert "relevance ranks export" in workflow_text
 
 
 def test_issue_ops_routes_generic_reviews_to_brightdata_extract():

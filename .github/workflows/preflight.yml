@@ -39,6 +39,7 @@ jobs:
       PRIVATE_REPO_PAT: ${{ secrets.PRIVATE_REPO_PAT }}
       GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
       ELT_RAW_GCS_BUCKET: ${{ vars.ELT_RAW_GCS_BUCKET }}
+      ELT_EXPORT_GCS_BUCKET: ${{ vars.ELT_EXPORT_GCS_BUCKET }}
       ELT_BIGQUERY_PROJECT_ID: ${{ vars.ELT_BIGQUERY_PROJECT_ID }}
       ELT_BIGQUERY_DATASET: ${{ vars.ELT_BIGQUERY_DATASET }}
     steps:
@@ -111,8 +112,11 @@ jobs:
           dataset = os.environ["ELT_BIGQUERY_DATASET"]
 
           storage.Client(project=project_id).bucket(bucket_name).reload()
+          export_bucket_name = os.environ.get("ELT_EXPORT_GCS_BUCKET") or bucket_name
+          storage.Client(project=project_id).bucket(export_bucket_name).reload()
           bigquery.Client(project=project_id).get_dataset(f"{project_id}.{dataset}")
           print(f"GCS bucket ok: gs://{bucket_name}")
+          print(f"Export bucket ok: gs://{export_bucket_name}")
           print(f"BigQuery dataset ok: {project_id}.{dataset}")
           PY
 

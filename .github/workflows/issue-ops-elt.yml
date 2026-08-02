@@ -210,8 +210,32 @@ jobs:
       relevance_rank_limit: ${{ fromJson(needs.parse.outputs.payload_json).params.relevance_rank_limit || '10' }}
       serp_max_workers: ${{ fromJson(needs.parse.outputs.payload_json).params.serp_max_workers || '3' }}
 
+  export_reviews:
+    needs: [parse, extract]
+    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.extract.result == 'success' && vars.ELT_BIGQUERY_PROJECT_ID != '' && vars.ELT_BIGQUERY_DATASET != '' && (vars.ELT_EXPORT_GCS_BUCKET != '' || vars.ELT_RAW_GCS_BUCKET != '')
+    uses: ./.github/workflows/bigquery-export.yml
+    secrets: inherit
+    with:
+      project_id: ${{ vars.ELT_BIGQUERY_PROJECT_ID }}
+      dataset: ${{ vars.ELT_BIGQUERY_DATASET }}
+      table: ${{ needs.parse.outputs.workflow_type == 'facility' && 'dim_facilities' || 'fact_reviews' }}
+      gcs_bucket: ${{ vars.ELT_EXPORT_GCS_BUCKET || vars.ELT_RAW_GCS_BUCKET }}
+      legacy_output_path: ${{ fromJson(needs.parse.outputs.payload_json).params.output_file || fromJson(needs.parse.outputs.payload_json).params.custom_settings.review_file || (needs.parse.outputs.workflow_type == 'facility' && 'results/dim_facilities.csv' || 'results/fact_reviews.csv') }}
+
+  export_relevance:
+    needs: [parse, serp_relevance]
+    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.parse.outputs.workflow_type == 'reviews_recent_relevance' && needs.serp_relevance.result == 'success' && vars.ELT_BIGQUERY_PROJECT_ID != '' && vars.ELT_BIGQUERY_DATASET != '' && (vars.ELT_EXPORT_GCS_BUCKET != '' || vars.ELT_RAW_GCS_BUCKET != '')
+    uses: ./.github/workflows/bigquery-export.yml
+    secrets: inherit
+    with:
+      project_id: ${{ vars.ELT_BIGQUERY_PROJECT_ID }}
+      dataset: ${{ vars.ELT_BIGQUERY_DATASET }}
+      table: fact_review_relevance_ranks
+      gcs_bucket: ${{ vars.ELT_EXPORT_GCS_BUCKET || vars.ELT_RAW_GCS_BUCKET }}
+      legacy_output_path: ${{ fromJson(needs.parse.outputs.payload_json).params.summary_file || 'results/relevance_rank_summary.csv' }}
+
   report:
-    needs: [parse, config, extract, serp_relevance]
+    needs: [parse, config, extract, serp_relevance, export_reviews, export_relevance]
     if: always() && needs.parse.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -220,6 +244,8 @@ jobs:
         env:
           EXTRACT_RESULT: ${{ needs.extract.result }}
           SERP_RESULT: ${{ needs.serp_relevance.result }}
+          EXPORT_REVIEWS_RESULT: ${{ needs.export_reviews.result }}
+          EXPORT_RELEVANCE_RESULT: ${{ needs.export_relevance.result }}
           CONFIG_RESULT: ${{ needs.config.result }}
           CONFIG_VALID: ${{ needs.config.outputs.valid }}
           CONFIG_ERRORS: ${{ needs.config.outputs.errors }}
@@ -229,6 +255,8 @@ jobs:
           script: |
             const extractResult = process.env.EXTRACT_RESULT || 'skipped';
             const serpResult = process.env.SERP_RESULT || 'skipped';
+            const exportReviewsResult = process.env.EXPORT_REVIEWS_RESULT || 'skipped';
+            const exportRelevanceResult = process.env.EXPORT_RELEVANCE_RESULT || 'skipped';
             const configResult = process.env.CONFIG_RESULT || 'skipped';
             const configValid = process.env.CONFIG_VALID === 'true';
             const configErrors = process.env.CONFIG_ERRORS || '';
@@ -238,6 +266,8 @@ jobs:
             const activeResults = [
               ['BrightData extract', extractResult],
               ['SERP relevance', serpResult],
+              ['fact_reviews export', exportReviewsResult],
+              ['relevance ranks export', exportRelevanceResult],
             ].filter(([, result]) => result && result !== 'skipped');
             const hasFailure = activeResults.some(([, result]) => ['failure', 'cancelled', 'timed_out'].includes(result));
             const resultLines = activeResults.length
