@@ -70,6 +70,10 @@ async function loadFilePresets() {
       ...pathsForPurpose("results", "sequential_input"),
       ...pathsForPurpose("results", "facility_output"),
     ]);
+    populateDatalist("fidInputFiles", [
+      "results/fid.csv",
+      ...pathsForPurpose("results", "fid_input"),
+    ]);
     populateDatalist("reviewOutputFiles", [
       "results/dental_reviews.csv",
       "results/dental_review.csv",
@@ -124,9 +128,10 @@ function buildParams() {
     return {
       workflow: selected,
       config_file: "settings/settings.json",
-      fid_file: "results/fid.csv",
-      process_count: "100",
-      workers: "10",
+      fid_file: fieldValue("fidFile"),
+      start_line: fieldValue("startLine"),
+      process_count: fieldValue("processCount"),
+      workers: fieldValue("workers"),
       custom_settings: {
         review_file: fieldValue("outputFile"),
       },
@@ -150,7 +155,7 @@ ${JSON.stringify(params, null, 2)}
 ## Execution policy
 
 この Issue は v2 の ELT IssueOps により検証されます。
-管理者が \`/承認\` とコメントすると、raw payload を GCS/BigQuery ELT 境界へ送る準備ジョブが実行されます。
+管理者が \`/承認\` とコメントすると、BrightData extract、raw保存、BigQuery load/transform が実行されます。
 `;
 }
 

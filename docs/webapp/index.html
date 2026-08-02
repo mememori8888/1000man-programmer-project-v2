@@ -39,6 +39,28 @@
             <input id="outputFile" value="results/dental_reviews.csv" list="reviewOutputFiles">
           </label>
 
+          <div class="reviews-fields">
+            <label>
+              fid_file
+              <input id="fidFile" value="results/fid.csv" list="fidInputFiles">
+            </label>
+
+            <div class="grid">
+              <label>
+                start_line
+                <input id="startLine" type="number" min="1" value="1">
+              </label>
+              <label>
+                process_count
+                <input id="processCount" type="number" min="1" value="100">
+              </label>
+              <label>
+                workers
+                <input id="workers" type="number" min="1" max="20" value="10">
+              </label>
+            </div>
+          </div>
+
           <div class="grid">
             <label>
               days_back
@@ -88,6 +110,7 @@
           </div>
 
           <datalist id="sequentialInputFiles"></datalist>
+          <datalist id="fidInputFiles"></datalist>
           <datalist id="reviewOutputFiles"></datalist>
           <datalist id="summaryOutputFiles"></datalist>
 

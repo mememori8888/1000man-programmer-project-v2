@@ -168,13 +168,27 @@ def test_compatibility_audit_workflow_uses_private_csv_and_bigquery_diff():
 def test_webapp_uses_curated_public_file_presets():
     app_text = Path("docs/webapp/app.js").read_text(encoding="utf-8")
     index_text = Path("docs/webapp/index.html").read_text(encoding="utf-8")
+    style_text = Path("docs/webapp/style.css").read_text(encoding="utf-8")
     presets = json.loads(Path("docs/webapp/file-presets.json").read_text(encoding="utf-8"))
 
     assert "file-presets.json" in app_text
     assert "api.github.com/repos" not in app_text
     assert 'list="sequentialInputFiles"' in index_text
+    assert 'list="fidInputFiles"' in index_text
     assert 'list="reviewOutputFiles"' in index_text
     assert 'list="summaryOutputFiles"' in index_text
+    assert 'id="fidFile"' in index_text
+    assert 'id="startLine"' in index_text
+    assert 'id="processCount"' in index_text
+    assert 'id="workers"' in index_text
+    assert "params.fid_file" not in app_text
+    assert 'fid_file: fieldValue("fidFile")' in app_text
+    assert 'start_line: fieldValue("startLine")' in app_text
+    assert 'process_count: fieldValue("processCount")' in app_text
+    assert 'workers: fieldValue("workers")' in app_text
+    assert 'body[data-workflow="reviews"] .reviews-fields' in style_text
+    assert 'body[data-workflow="reviews_recent_relevance"] .relevance-fields' in style_text
     assert presets["generated_by"] == "curated_public_v2_presets"
     assert any("sequential_input" in entry["purposes"] for entry in presets["results"])
+    assert any("fid_input" in entry["purposes"] for entry in presets["results"])
     assert any("review_output" in entry["purposes"] for entry in presets["results"])

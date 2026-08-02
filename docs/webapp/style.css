@@ -92,6 +92,29 @@ select {
   gap: 12px;
 }
 
+.reviews-fields,
+.relevance-fields {
+  display: none;
+}
+
+body[data-workflow="reviews"] .reviews-fields {
+  display: block;
+}
+
+body[data-workflow="reviews_recent_relevance"] .relevance-fields {
+  display: grid;
+}
+
+body[data-workflow="facility"] .reviews-fields,
+body[data-workflow="facility"] .relevance-fields {
+  display: none;
+}
+
+body[data-workflow="reviews_sequential"] .reviews-fields,
+body[data-workflow="reviews_sequential"] .relevance-fields {
+  display: none;
+}
+
 .actions {
   display: flex;
   gap: 10px;
