@@ -1,9 +1,13 @@
--- Parse raw BrightData SERP response envelopes into row-shaped relevance rank data.
+-- Staging layer: parse raw BrightData SERP response envelopes into row-shaped
+-- relevance rank data.
 -- Expected envelope:
 --   {"request": {"url": "...", "zone": "..."}, "response": {...SERP payload...}}
 -- The response shape can vary by BrightData zone, so this SQL checks several common arrays.
 
-create or replace table `${PROJECT_ID}.${DATASET}.raw_serp_relevance_parsed` as
+create or replace table `${PROJECT_ID}.${DATASET}.raw_serp_relevance_parsed`
+partition by date(extracted_at)
+cluster by facility_id, review_id
+as
 with source_rows as (
   select
     source_run_id,

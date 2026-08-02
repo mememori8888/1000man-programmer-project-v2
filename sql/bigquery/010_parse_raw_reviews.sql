@@ -1,9 +1,12 @@
--- Parse raw BrightData review payloads into row-shaped staging data.
+-- Staging layer: parse raw BrightData review payloads into row-shaped data.
 -- Supports either:
 --   1. {"snapshot_id": "...", "data": [ ...review objects... ]}
 --   2. [ ...review objects... ]
 
-create or replace table `${PROJECT_ID}.${DATASET}.raw_reviews_parsed` as
+create or replace table `${PROJECT_ID}.${DATASET}.raw_reviews_parsed`
+partition by date(extracted_at)
+cluster by facility_id, review_id
+as
 with source_rows as (
   select
     source_run_id,

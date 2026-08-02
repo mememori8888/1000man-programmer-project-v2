@@ -1,4 +1,4 @@
--- Deduplicate parsed review rows before inserting into fact_reviews.
+-- Mart layer: deduplicate parsed review rows into fact_reviews.
 -- `raw_reviews_parsed` is the staging view/table produced from raw payload parsing.
 
 create or replace table `${PROJECT_ID}.${DATASET}.fact_reviews`

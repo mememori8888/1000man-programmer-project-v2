@@ -1,4 +1,6 @@
--- Parse raw BrightData facility payloads into a dimension staging table.
+-- Mart layer: build dim_facilities as an SCD Type 1 dimension.
+-- The latest facility attributes win, while first_seen_at keeps the earliest
+-- observed timestamp for the facility.
 -- Supports either:
 --   1. {"snapshot_id": "...", "data": [ ...facility objects... ]}
 --   2. [ ...facility objects... ]
@@ -74,9 +76,15 @@ normalized as (
 deduped as (
   select
     *,
+    min(first_seen_at) over (
+      partition by facility_id
+    ) as facility_first_seen_at,
+    max(updated_at) over (
+      partition by facility_id
+    ) as facility_updated_at,
     row_number() over (
       partition by facility_id
-      order by updated_at desc, first_seen_at desc
+      order by first_seen_at desc, updated_at desc, source_run_id desc, raw_object_uri desc
     ) as row_num
   from normalized
   where facility_id is not null
@@ -88,7 +96,7 @@ select
   address,
   google_map_url,
   fid,
-  first_seen_at,
-  updated_at
+  facility_first_seen_at as first_seen_at,
+  facility_updated_at as updated_at
 from deduped
 where row_num = 1;

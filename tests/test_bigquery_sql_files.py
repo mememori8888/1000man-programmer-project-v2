@@ -55,11 +55,41 @@ def test_serp_parser_uses_request_facility_id_from_envelope():
 
 
 def test_mart_transforms_preserve_bigquery_physical_design():
+    review_stage_sql = Path("sql/bigquery/010_parse_raw_reviews.sql").read_text(encoding="utf-8").lower()
+    dim_sql = Path("sql/bigquery/011_parse_raw_facilities.sql").read_text(encoding="utf-8").lower()
+    serp_stage_sql = Path("sql/bigquery/020_parse_raw_serp_responses.sql").read_text(encoding="utf-8").lower()
+    reviews_sql = Path("sql/bigquery/101_deduplicate_reviews.sql").read_text(encoding="utf-8").lower()
+    ranks_sql = Path("sql/bigquery/120_build_review_relevance_ranks.sql").read_text(encoding="utf-8").lower()
+
+    assert "partition by date(extracted_at)" in review_stage_sql
+    assert "cluster by facility_id, review_id" in review_stage_sql
+    assert "cluster by facility_type, facility_id" in dim_sql
+    assert "min(first_seen_at) over" in dim_sql
+    assert "facility_first_seen_at as first_seen_at" in dim_sql
+    assert "max(updated_at) over" in dim_sql
+    assert "facility_updated_at as updated_at" in dim_sql
+    assert "partition by date(extracted_at)" in serp_stage_sql
+    assert "cluster by facility_id, review_id" in serp_stage_sql
+    assert "partition by review_date" in reviews_sql
+    assert "cluster by facility_id, review_id" in reviews_sql
+    assert "cluster by facility_id, review_id" in ranks_sql
+
+
+def test_sql_files_label_dwh_layers_without_changing_public_marts():
+    raw_sql = Path("sql/bigquery/001_create_raw_tables.sql").read_text(encoding="utf-8").lower()
+    review_stage_sql = Path("sql/bigquery/010_parse_raw_reviews.sql").read_text(encoding="utf-8").lower()
+    serp_stage_sql = Path("sql/bigquery/020_parse_raw_serp_responses.sql").read_text(encoding="utf-8").lower()
     dim_sql = Path("sql/bigquery/011_parse_raw_facilities.sql").read_text(encoding="utf-8").lower()
     reviews_sql = Path("sql/bigquery/101_deduplicate_reviews.sql").read_text(encoding="utf-8").lower()
     ranks_sql = Path("sql/bigquery/120_build_review_relevance_ranks.sql").read_text(encoding="utf-8").lower()
 
-    assert "cluster by facility_type, facility_id" in dim_sql
-    assert "partition by review_date" in reviews_sql
-    assert "cluster by facility_id, review_id" in reviews_sql
-    assert "cluster by facility_id, review_id" in ranks_sql
+    assert "raw layer" in raw_sql
+    assert "staging layer" in review_stage_sql
+    assert "staging layer" in serp_stage_sql
+    assert "mart layer" in dim_sql
+    assert "mart layer" in reviews_sql
+    assert "mart layer" in ranks_sql
+
+    assert "create or replace table `${project_id}.${dataset}.dim_facilities`" in dim_sql
+    assert "create or replace table `${project_id}.${dataset}.fact_reviews`" in reviews_sql
+    assert "create or replace table `${project_id}.${dataset}.fact_review_relevance_ranks`" in ranks_sql
