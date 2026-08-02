@@ -51,6 +51,8 @@ GCS/BigQuery 連携を有効にする場合は、GitHub repository variables に
 
 設定後は Actions の `v2 ELT preflight` を手動実行し、BrightData token、private data repo、GCS、BigQuery dataset、標準 BigQuery transform SQL の dry-run を確認します。
 
+実運用へ切り替える前の確認証跡は [docs/demo-compatibility-audit.md](docs/demo-compatibility-audit.md) の release evidence checklist に集約します。旧 demo の出力互換、raw payload / manifest、BigQuery export URI、`compatibility-audit.json` を同じ単位で残してから段階移行します。
+
 ## 新アーキテクチャ
 
 標準構成は `Google Cloud Storage + BigQuery` に固定します。

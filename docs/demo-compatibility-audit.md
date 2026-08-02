@@ -28,3 +28,19 @@ Source inspected: `mememori8888/demo` at `e6a01b3` (`Build canonical Google Maps
 
 1. Run `.github/workflows/compatibility-audit.yml` after a real BrightData run with `fail_on_diff: true` and archive the generated report with the release evidence.
 2. Export `fact_reviews`, `dim_facilities`, and `fact_review_relevance_ranks` through `.github/workflows/bigquery-export.yml` and compare the delivered CSV shape with the old demo outputs.
+
+## Release evidence checklist
+
+v2 を「demo 機能を損なわずに置き換えられる」と判断する前に、次の実行証跡を 1 つの release evidence として残します。
+
+| Evidence | Required proof |
+| --- | --- |
+| Preflight | `v2 ELT preflight` の run ID と Summary。`work-bigquery-dry-run.json` artifact を保存し、GCS bucket、BigQuery dataset、標準 SQL dry-run が成功していること |
+| IssueOps request | WebApp から作成した Issue URL。`/run-facility`, `/run-reviews`, `/run-reviews-sequential`, `/run-reviews-relevance` のうち対象 release で保証するコマンドと `/承認` コメント |
+| Extract | IssueOps の最終コメント、BrightData workflow run ID、raw payload GCS URI、raw manifest GCS URI |
+| Load and Transform | BigQuery raw table への load job ID、`elt-bigquery run-all-sql` または `bigquery-transform.yml` の run ID |
+| CSV compatibility export | `fact_reviews`, `dim_facilities`, `fact_review_relevance_ranks` の GCS export URI と `bigquery-export.yml` の run ID |
+| demo-vs-v2 audit | `compatibility-audit.yml` を `run_transform: true`、`fail_on_diff: true` で実行した run ID、Summary、`compatibility-audit.json` artifact |
+| Exceptions | 差分が残る場合は、旧 demo の仕様差、v2 の意図的変更、追跡 Issue URL を明記する |
+
+このチェックリストは削除判定ではなく、移行判定のためのものです。旧ファイルや旧 workflow は、上記証跡で代替機能が確認できるまで残します。
