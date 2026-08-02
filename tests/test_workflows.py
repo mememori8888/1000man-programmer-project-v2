@@ -40,6 +40,7 @@ def test_ci_runs_pytest_and_actionlint():
 
     assert "python -m pytest" in workflow_text
     assert "actions/setup-go@v5" in workflow_text
+    assert "cache: false" in workflow_text
     assert "go install github.com/rhysd/actionlint/cmd/actionlint@latest" in workflow_text
     assert "run: actionlint" in workflow_text
 

@@ -247,9 +247,11 @@ jobs:
           matrix = json.loads(Path("work/serp-matrix.json").read_text(encoding="utf-8"))
           print(f"target_count={len(matrix.get('include', []))}")
           PY
-          echo "matrix<<EOF" >> "$GITHUB_OUTPUT"
-          cat work/serp-matrix.json >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          {
+            echo "matrix<<EOF"
+            cat work/serp-matrix.json
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Summary
         run: |
