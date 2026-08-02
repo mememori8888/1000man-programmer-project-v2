@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +14,8 @@ import requests
 
 REVIEW_URL_COLUMNS = ["GoogleMap", "google_map_url", "google_map", "web", "url"]
 FACILITY_ADDRESS_COLUMNS = ["address", "住所", "prefecture", "都道府県"]
+FID_COLUMNS = ["施設FID", "FID", "fid", "Facility FID", "facility_fid"]
+FID_PATTERN = re.compile(r"0x[0-9a-f]+:0x[0-9a-f]+", re.IGNORECASE)
 
 
 class HTTPSession(Protocol):
@@ -165,6 +168,10 @@ def build_dataset_items_from_csv(
 
         if workflow_type in {"reviews", "reviews_sequential", "reviews_recent_relevance"}:
             url = _first_present(row, ["GoogleMap", "google_map_url", "google_map", "web", "url"])
+            if not url and workflow_type == "reviews":
+                fid = _first_present(row, FID_COLUMNS) or _detect_fid_value(row)
+                if fid:
+                    url = f"https://www.google.com/reviews?fid={fid}&sort=qualityScore&hl=ja&brd_json=1"
             if url:
                 items.append({"url": url, "days_limit": days_back})
             continue
@@ -208,7 +215,11 @@ def validate_dataset_csv(
     if not header:
         raise ValueError(f"csv_path has no header row: {csv_path}")
 
-    if workflow_type in {"reviews", "reviews_sequential", "reviews_recent_relevance"}:
+    if workflow_type == "reviews":
+        required_any_columns = tuple([*REVIEW_URL_COLUMNS, *FID_COLUMNS])
+        if skip_column and not _has_any_column(header, [skip_column]):
+            raise ValueError(f"skip_column is not present in CSV header: {skip_column}")
+    elif workflow_type in {"reviews_sequential", "reviews_recent_relevance"}:
         required_any_columns = tuple(REVIEW_URL_COLUMNS)
         if skip_column and not _has_any_column(header, [skip_column]):
             raise ValueError(f"skip_column is not present in CSV header: {skip_column}")
@@ -217,7 +228,10 @@ def validate_dataset_csv(
     else:
         raise ValueError(f"unsupported workflow_type: {workflow_type}")
 
-    if not _has_any_column(header, list(required_any_columns)):
+    has_required_column = _has_any_column(header, list(required_any_columns))
+    if workflow_type == "reviews" and not has_required_column:
+        has_required_column = any(_detect_fid_value(row) for row in rows[:20])
+    if not has_required_column:
         raise ValueError(
             "CSV must include at least one of these columns for "
             f"{workflow_type}: {', '.join(required_any_columns)}"
@@ -319,3 +333,11 @@ def _first_present(row: dict[str, str], keys: list[str]) -> str:
 def _has_any_column(header: list[str], keys: list[str]) -> bool:
     lowered = {column.lower() for column in header}
     return any(key in header or key.lower() in lowered for key in keys)
+
+
+def _detect_fid_value(row: dict[str, str]) -> str:
+    for value in row.values():
+        text = str(value or "").strip()
+        if FID_PATTERN.fullmatch(text):
+            return text
+    return ""

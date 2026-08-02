@@ -62,6 +62,29 @@ def test_builds_review_dataset_items_from_csv(tmp_path: Path):
     assert items == [{"url": "https://maps.example/place/1", "days_limit": 30}]
 
 
+def test_builds_legacy_reviews_items_from_fid_csv(tmp_path: Path):
+    csv_file = tmp_path / "fid.csv"
+    csv_file.write_text(
+        "施設ID,施設GID,施設FID\n"
+        "1,gid-1,0x123abc:0x456def\n",
+        encoding="utf-8",
+    )
+
+    items = build_dataset_items_from_csv(
+        csv_path=csv_file,
+        workflow_type="reviews",
+        days_back=10,
+        skip_column="",
+    )
+
+    assert items == [
+        {
+            "url": "https://www.google.com/reviews?fid=0x123abc:0x456def&sort=qualityScore&hl=ja&brd_json=1",
+            "days_limit": 10,
+        }
+    ]
+
+
 def test_builds_facility_search_items_from_address_csv(tmp_path: Path):
     csv_file = tmp_path / "addresses.csv"
     csv_file.write_text("住所\n東京都渋谷区\n", encoding="utf-8")
@@ -130,6 +153,20 @@ def test_validate_dataset_csv_rejects_missing_review_url_column(tmp_path: Path):
         assert "at least one" in str(exc)
     else:
         raise AssertionError("expected missing URL column validation to fail")
+
+
+def test_validate_dataset_csv_accepts_legacy_fid_csv(tmp_path: Path):
+    csv_file = tmp_path / "fid.csv"
+    csv_file.write_text(
+        "施設ID,施設GID,施設FID\n"
+        "1,gid-1,0x123abc:0x456def\n",
+        encoding="utf-8",
+    )
+
+    validation = validate_dataset_csv(csv_path=csv_file, workflow_type="reviews", skip_column="")
+
+    assert validation.item_count == 1
+    assert validation.present_columns == ("施設FID",)
 
 
 def test_validate_dataset_csv_rejects_empty_selected_range(tmp_path: Path):

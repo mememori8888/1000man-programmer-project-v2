@@ -96,6 +96,16 @@ def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract(
     assert "target_source: bigquery_recent_reviews" in workflow_text
 
 
+def test_issue_ops_routes_generic_reviews_to_brightdata_extract():
+    workflow_text = Path(".github/workflows/issue-ops-elt.yml").read_text(encoding="utf-8")
+
+    assert "uses: ./.github/workflows/brightdata-extract.yml" in workflow_text
+    assert "params.fid_file" in workflow_text
+    assert "params.start_line" in workflow_text
+    assert "params.process_count" in workflow_text
+    assert "workflow_type != 'reviews'" not in workflow_text
+
+
 def test_issue_ops_report_distinguishes_success_failure_and_links_run():
     workflow_text = Path(".github/workflows/issue-ops-elt.yml").read_text(encoding="utf-8")
 

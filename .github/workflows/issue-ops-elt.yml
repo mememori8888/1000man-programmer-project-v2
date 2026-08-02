@@ -184,20 +184,21 @@ jobs:
 
   extract:
     needs: [parse, config]
-    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.config.outputs.valid == 'true' && needs.parse.outputs.workflow_type != 'reviews'
+    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.config.outputs.valid == 'true'
     uses: ./.github/workflows/brightdata-extract.yml
     secrets: inherit
     with:
       workflow_type: ${{ needs.parse.outputs.workflow_type }}
-      csv_file: ${{ fromJson(needs.parse.outputs.payload_json).params.csv_file || fromJson(needs.parse.outputs.payload_json).params.custom_settings.address_csv_path || 'settings/address.csv' }}
+      csv_file: ${{ fromJson(needs.parse.outputs.payload_json).params.csv_file || fromJson(needs.parse.outputs.payload_json).params.fid_file || fromJson(needs.parse.outputs.payload_json).params.custom_settings.address_csv_path || 'settings/address.csv' }}
       dataset_id: ${{ fromJson(needs.parse.outputs.payload_json).params.dataset_id || 'gd_luzfs1dn2oa0teb81' }}
       days_back: ${{ fromJson(needs.parse.outputs.payload_json).params.days_back || '10' }}
-      skip_column: ${{ fromJson(needs.parse.outputs.payload_json).params.skip_column || 'web' }}
+      skip_column: ${{ fromJson(needs.parse.outputs.payload_json).params.skip_column || '' }}
       query: ${{ fromJson(needs.parse.outputs.payload_json).params.custom_settings.query || '' }}
-      start_from_batch: ${{ fromJson(needs.parse.outputs.payload_json).params.start_from_batch || '1' }}
-      rows_per_batch: ${{ fromJson(needs.parse.outputs.payload_json).params.rows_per_batch || '500' }}
+      start_row: ${{ fromJson(needs.parse.outputs.payload_json).params.start_line || '1' }}
+      start_from_batch: ${{ fromJson(needs.parse.outputs.payload_json).params.start_from_batch || '' }}
+      rows_per_batch: ${{ fromJson(needs.parse.outputs.payload_json).params.rows_per_batch || '' }}
       max_batches: ${{ fromJson(needs.parse.outputs.payload_json).params.max_batches || '1' }}
-      row_limit: ""
+      row_limit: ${{ fromJson(needs.parse.outputs.payload_json).params.process_count || '' }}
 
   serp_relevance:
     needs: [parse, extract]
