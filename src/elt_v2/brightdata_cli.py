@@ -9,6 +9,7 @@ from elt_v2.brightdata import (
     BrightDataDatasetClient,
     BrightDataSerpClient,
     build_dataset_items_from_csv,
+    build_serp_relevance_items_from_csv,
     write_json,
 )
 
@@ -26,6 +27,13 @@ def main(argv: list[str] | None = None) -> int:
     build_parser.add_argument("--start-row", type=int, default=1)
     build_parser.add_argument("--row-limit", type=int)
     build_parser.add_argument("--query", default="")
+
+    serp_items_parser = subparsers.add_parser("build-serp-items", help="Build SERP relevance input items from CSV.")
+    serp_items_parser.add_argument("--csv-file", required=True, type=Path)
+    serp_items_parser.add_argument("--output", required=True, type=Path)
+    serp_items_parser.add_argument("--skip-column", default="web")
+    serp_items_parser.add_argument("--start-row", type=int, default=1)
+    serp_items_parser.add_argument("--row-limit", type=int)
 
     dataset_parser = subparsers.add_parser("run-dataset", help="Run BrightData Dataset API.")
     dataset_parser.add_argument("--dataset-id", required=True)
@@ -55,6 +63,17 @@ def main(argv: list[str] | None = None) -> int:
             query=args.query,
         )
         write_json(args.output, items)
+        print(json.dumps({"items": len(items), "output": str(args.output)}, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "build-serp-items":
+        items = build_serp_relevance_items_from_csv(
+            csv_path=args.csv_file,
+            skip_column=args.skip_column,
+            start_row=args.start_row,
+            row_limit=args.row_limit,
+        )
+        write_json(args.output, {"include": items})
         print(json.dumps({"items": len(items), "output": str(args.output)}, ensure_ascii=False, indent=2))
         return 0
 

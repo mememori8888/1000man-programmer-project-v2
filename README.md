@@ -217,6 +217,7 @@ where row_num = 1;
 - `.github/workflows/brightdata-extract.yml`: private data repo の CSV から BrightData Dataset API input items を作り、実取得する。
 - `.github/workflows/serp-reviews-smoke.yml`: BrightData SERP API の URL/zone 疎通を診断する。
 - `.github/workflows/serp-relevance-extract.yml`: SERP API response を `serp_relevance` raw object として保存し、BigQuery raw table へ投入する。
+- `.github/workflows/serp-relevance-batch.yml`: private data repo の施設CSVからSERP対象URLをmatrix化し、複数施設の関連度 raw response を保存する。
 - `.github/workflows/raw-elt-ingest.yml`: IssueOps または手動実行から raw object と manifest を生成する。
 - `.github/workflows/raw-object-replay.yml`: GCS 上の raw object と manifest を BigQuery raw table へ再投入する復旧 workflow。
 - `.github/workflows/bigquery-transform.yml`: BigQuery SQL を単体または標準順序の `all` で手動実行する変換 workflow。

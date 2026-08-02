@@ -149,8 +149,22 @@ jobs:
       max_batches: ${{ fromJson(needs.parse.outputs.payload_json).params.max_batches || '1' }}
       row_limit: ""
 
+  serp_relevance:
+    needs: [parse, extract]
+    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.parse.outputs.workflow_type == 'reviews_recent_relevance' && needs.extract.result == 'success'
+    uses: ./.github/workflows/serp-relevance-batch.yml
+    secrets: inherit
+    with:
+      csv_file: ${{ fromJson(needs.parse.outputs.payload_json).params.csv_file || 'results/dental_new.csv' }}
+      skip_column: ${{ fromJson(needs.parse.outputs.payload_json).params.skip_column || 'web' }}
+      zone: ${{ fromJson(needs.parse.outputs.payload_json).params.serp_zone_name || 'serp_api2' }}
+      start_from_batch: ${{ fromJson(needs.parse.outputs.payload_json).params.start_from_batch || '1' }}
+      rows_per_batch: ${{ fromJson(needs.parse.outputs.payload_json).params.rows_per_batch || '10' }}
+      row_limit: ${{ fromJson(needs.parse.outputs.payload_json).params.rows_per_batch || '10' }}
+      serp_max_workers: ${{ fromJson(needs.parse.outputs.payload_json).params.serp_max_workers || '3' }}
+
   report:
-    needs: [parse, ingest, extract]
+    needs: [parse, ingest, extract, serp_relevance]
     if: always() && needs.parse.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -160,11 +174,14 @@ jobs:
           script: |
             const rawResult = '${{ needs.ingest.result }}';
             const extractResult = '${{ needs.extract.result }}';
-            const result = extractResult && extractResult !== 'skipped' ? extractResult : rawResult;
+            const serpResult = '${{ needs.serp_relevance.result }}';
+            const result = serpResult && serpResult !== 'skipped'
+              ? `dataset=${extractResult}, serp=${serpResult}`
+              : (extractResult && extractResult !== 'skipped' ? extractResult : rawResult);
             const valid = '${{ needs.parse.outputs.valid }}' === 'true';
             const errors = `${{ needs.parse.outputs.validation_errors }}`;
             const body = valid
-              ? `v2 ELT result: \`${result}\`\n\nBrightData extract または raw ingest の artifact に raw object と manifest が保存されています。`
+              ? `v2 ELT result: \`${result}\`\n\nBrightData extract、SERP relevance、または raw ingest の artifact に raw object と manifest が保存されています。`
               : `v2 ELT validation failed:\n\n\`\`\`\n${errors || 'Unknown validation error'}\n\`\`\``;
             await github.rest.issues.createComment({
               owner: context.repo.owner,

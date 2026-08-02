@@ -17,7 +17,7 @@ Source inspected: `mememori8888/demo` at `e6a01b3` (`Build canonical Google Maps
 
 | demo capability | v2 direction |
 | --- | --- |
-| `reviews_recent_with_relevance.yml` SERP rank enrichment | SERP raw response storage and BigQuery rank fact transform are implemented as the v2 foundation |
+| `reviews_recent_with_relevance.yml` SERP rank enrichment | SERP raw response storage, bounded batch orchestration, and BigQuery rank fact transform are implemented as the v2 foundation |
 | `serp_reviews_smoke.yml` diagnostics | Preserved via `.github/workflows/serp-reviews-smoke.yml` |
 | `recover-run-artifacts.yml` CSV batch recovery | Replaced by `.github/workflows/raw-object-replay.yml` for GCS raw object replay and BigQuery re-transform |
 | `generate-file-list.yml` / `docs/webapp/files.json` | v2 WebApp uses static defaults today; dynamic private-data file listing remains a compatibility gap |
@@ -26,4 +26,4 @@ Source inspected: `mememori8888/demo` at `e6a01b3` (`Build canonical Google Maps
 ## Next compatibility targets
 
 1. Add dynamic file listing for WebApp inputs without exposing private repository contents publicly.
-2. Add an orchestration layer that runs SERP relevance extraction for all facilities with recent Dataset reviews.
+2. Narrow SERP relevance orchestration to facilities that actually had recent Dataset reviews, instead of using the CSV row window alone.

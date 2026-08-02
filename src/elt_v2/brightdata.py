@@ -169,6 +169,39 @@ def build_dataset_items_from_csv(
     return items
 
 
+def build_serp_relevance_items_from_csv(
+    *,
+    csv_path: Path,
+    skip_column: str = "web",
+    start_row: int = 1,
+    row_limit: int | None = None,
+) -> list[dict[str, Any]]:
+    rows = _read_csv_rows(csv_path)
+    selected = rows[start_row - 1 :]
+    if row_limit is not None:
+        selected = selected[:row_limit]
+
+    items: list[dict[str, Any]] = []
+    for index, row in enumerate(selected, start=start_row):
+        if skip_column and not str(row.get(skip_column, "")).strip():
+            continue
+
+        url = _first_present(row, ["GoogleMap", "google_map_url", "google_map", "web", "url"])
+        if not url:
+            continue
+
+        facility_id = _first_present(row, ["facility_id", "place_id", "fid", "gid", "id"])
+        items.append(
+            {
+                "index": index,
+                "url": url,
+                "facility_id": facility_id or url,
+            }
+        )
+
+    return items
+
+
 def write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from elt_v2.brightdata import BrightDataDatasetClient, BrightDataSerpClient, build_dataset_items_from_csv
+from elt_v2.brightdata import (
+    BrightDataDatasetClient,
+    BrightDataSerpClient,
+    build_dataset_items_from_csv,
+    build_serp_relevance_items_from_csv,
+)
 
 
 class FakeResponse:
@@ -90,6 +95,29 @@ def test_build_items_respects_start_and_limit(tmp_path: Path):
     )
 
     assert items == [{"url": "https://maps.example/2", "days_limit": 10}]
+
+
+def test_builds_serp_relevance_items_from_csv(tmp_path: Path):
+    csv_file = tmp_path / "facilities.csv"
+    csv_file.write_text(
+        "facility_id,GoogleMap,web\n"
+        "f1,https://maps.example/1,yes\n"
+        "f2,https://maps.example/2,\n"
+        "f3,https://maps.example/3,yes\n",
+        encoding="utf-8",
+    )
+
+    items = build_serp_relevance_items_from_csv(
+        csv_path=csv_file,
+        skip_column="web",
+        start_row=1,
+        row_limit=3,
+    )
+
+    assert items == [
+        {"index": 1, "url": "https://maps.example/1", "facility_id": "f1"},
+        {"index": 3, "url": "https://maps.example/3", "facility_id": "f3"},
+    ]
 
 
 def test_dataset_client_runs_trigger_progress_snapshot():

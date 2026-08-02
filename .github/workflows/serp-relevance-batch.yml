@@ -1,0 +1,271 @@
+name: SERP relevance batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      csv_file:
+        description: CSV path inside private data repo
+        required: true
+        default: results/dental_new.csv
+      skip_column:
+        description: Skip rows when this column is empty
+        required: false
+        default: web
+      zone:
+        description: BrightData SERP zone name
+        required: false
+        default: serp_api2
+      start_row:
+        description: 1-based start row
+        required: false
+        default: "1"
+      start_from_batch:
+        description: 1-based batch number; overrides start_row when set
+        required: false
+        default: ""
+      rows_per_batch:
+        description: Rows per batch; used with start_from_batch
+        required: false
+        default: ""
+      row_limit:
+        description: Max rows to request
+        required: false
+        default: "10"
+      serp_max_workers:
+        description: Maximum parallel SERP requests
+        required: false
+        default: "3"
+  workflow_call:
+    inputs:
+      csv_file:
+        required: true
+        type: string
+      skip_column:
+        required: false
+        type: string
+        default: web
+      zone:
+        required: false
+        type: string
+        default: serp_api2
+      start_row:
+        required: false
+        type: string
+        default: "1"
+      start_from_batch:
+        required: false
+        type: string
+        default: ""
+      rows_per_batch:
+        required: false
+        type: string
+        default: ""
+      row_limit:
+        required: false
+        type: string
+        default: "10"
+      serp_max_workers:
+        required: false
+        type: string
+        default: "3"
+    secrets:
+      BRIGHTDATA_API_TOKEN:
+        required: true
+      PRIVATE_REPO_PAT:
+        required: true
+      GCP_SERVICE_ACCOUNT_JSON:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      max_parallel: ${{ steps.limits.outputs.max_parallel }}
+      effective_start_row: ${{ steps.limits.outputs.effective_start_row }}
+      effective_row_limit: ${{ steps.limits.outputs.effective_row_limit }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout private data
+        uses: actions/checkout@v4
+        with:
+          repository: mememori8888/googlemap
+          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          path: private-data
+          sparse-checkout: |
+            settings
+            results
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Normalize limits
+        id: limits
+        env:
+          SERP_MAX_WORKERS: ${{ inputs.serp_max_workers }}
+          START_ROW: ${{ inputs.start_row }}
+          START_FROM_BATCH: ${{ inputs.start_from_batch }}
+          ROWS_PER_BATCH: ${{ inputs.rows_per_batch }}
+          ROW_LIMIT: ${{ inputs.row_limit }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+
+          try:
+              max_parallel = int(os.environ.get("SERP_MAX_WORKERS") or "3")
+          except ValueError:
+              max_parallel = 3
+          max_parallel = min(max(max_parallel, 1), 3)
+          start_row = max(int(os.environ.get("START_ROW") or "1"), 1)
+          rows_per_batch = os.environ.get("ROWS_PER_BATCH") or ""
+          start_from_batch = os.environ.get("START_FROM_BATCH") or ""
+          row_limit = os.environ.get("ROW_LIMIT") or ""
+          if start_from_batch and rows_per_batch:
+              start_row = (max(int(start_from_batch), 1) - 1) * max(int(rows_per_batch), 1) + 1
+              if not row_limit or row_limit == "0":
+                  row_limit = rows_per_batch
+          print(f"max_parallel={max_parallel}")
+          print(f"effective_start_row={start_row}")
+          print(f"effective_row_limit={row_limit}")
+          PY
+
+      - name: Build SERP matrix
+        id: matrix
+        run: |
+          args=(
+            build-serp-items
+            --csv-file "private-data/${{ inputs.csv_file }}"
+            --output work/serp-matrix.json
+            --skip-column "${{ inputs.skip_column }}"
+            --start-row "${{ steps.limits.outputs.effective_start_row }}"
+          )
+          if [ -n "${{ steps.limits.outputs.effective_row_limit }}" ] && [ "${{ steps.limits.outputs.effective_row_limit }}" != "0" ]; then
+            args+=(--row-limit "${{ steps.limits.outputs.effective_row_limit }}")
+          fi
+          elt-brightdata "${args[@]}"
+          {
+            echo "matrix<<EOF"
+            cat work/serp-matrix.json
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+  extract:
+    needs: prepare
+    if: ${{ fromJson(needs.prepare.outputs.matrix).include[0] != null }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJson(needs.prepare.outputs.max_parallel) }}
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    env:
+      GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[gcp]"
+
+      - name: Authenticate to Google Cloud
+        if: env.GCP_SERVICE_ACCOUNT_JSON != ''
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ env.GCP_SERVICE_ACCOUNT_JSON }}
+
+      - name: Run SERP request
+        env:
+          BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
+          SERP_URL: ${{ matrix.url }}
+          SERP_ZONE: ${{ inputs.zone }}
+          FACILITY_ID: ${{ matrix.facility_id }}
+        run: |
+          mkdir -p work
+          elt-brightdata run-serp \
+            --url "$SERP_URL" \
+            --zone-name "$SERP_ZONE" \
+            --output work/serp-response.json
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          response = json.loads(Path("work/serp-response.json").read_text(encoding="utf-8-sig"))
+          envelope = {
+              "request": {
+                  "url": os.environ["SERP_URL"],
+                  "zone": os.environ["SERP_ZONE"],
+                  "facility_id": os.environ["FACILITY_ID"],
+              },
+              "response": response,
+          }
+          Path("work/serp-raw-envelope.json").write_text(
+              json.dumps(envelope, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Store raw object locally
+        id: local
+        run: |
+          elt-raw-write \
+            --input work/serp-raw-envelope.json \
+            --source-run-id "serp-${{ matrix.index }}-${{ github.run_id }}" \
+            --dataset-kind serp_relevance \
+            --local-output-root work/raw-output | tee work/raw-write-result.json
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path("work/raw-write-result.json").read_text(encoding="utf-8"))
+          manifest = result["manifest"]
+          local_path = result["local_path"]
+          print(f"object_name={manifest['object_name']}")
+          print(f"manifest_path={local_path}.manifest.json")
+          print(f"local_path={local_path}")
+          PY
+
+      - name: Upload raw object to GCS
+        if: vars.ELT_RAW_GCS_BUCKET != ''
+        run: |
+          elt-raw-write \
+            --input work/serp-raw-envelope.json \
+            --source-run-id "serp-${{ matrix.index }}-${{ github.run_id }}" \
+            --dataset-kind serp_relevance \
+            --gcs-bucket "${{ vars.ELT_RAW_GCS_BUCKET }}"
+
+      - name: Load raw row into BigQuery
+        if: vars.ELT_RAW_GCS_BUCKET != '' && vars.ELT_BIGQUERY_PROJECT_ID != '' && vars.ELT_BIGQUERY_DATASET != ''
+        run: |
+          elt-bigquery load-raw \
+            --manifest "${{ steps.local.outputs.manifest_path }}" \
+            --payload-file "${{ steps.local.outputs.local_path }}" \
+            --project-id "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" \
+            --dataset "${{ vars.ELT_BIGQUERY_DATASET }}" \
+            --source-uri "gs://${{ vars.ELT_RAW_GCS_BUCKET }}/${{ steps.local.outputs.object_name }}"
+
+      - name: Upload SERP raw artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: serp-relevance-${{ matrix.index }}-${{ github.run_id }}
+          path: work/
+          if-no-files-found: error
+          retention-days: 14

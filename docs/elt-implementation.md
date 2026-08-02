@@ -13,6 +13,7 @@ This project moves heavy matching and deduplication out of Python and into BigQu
 - `elt-brightdata run-serp` preserves the SERP API request path used by the existing demo for focused diagnostics and later relevance-rank work.
 - `.github/workflows/serp-reviews-smoke.yml` exposes that SERP diagnostic path as a manual workflow.
 - `.github/workflows/serp-relevance-extract.yml` stores SERP responses as `serp_relevance` raw objects and loads them into `raw_serp_responses`.
+- `.github/workflows/serp-relevance-batch.yml` turns a private-data facility CSV into a bounded SERP matrix, then stores each response with the same raw object contract.
 - `.github/workflows/brightdata-extract.yml` keeps the BrightData result file inside the same job, stores it as a raw object, and only passes small metadata through GitHub outputs.
 - `elt-bigquery replay-gcs-raw` and `.github/workflows/raw-object-replay.yml` replay an existing GCS raw object plus its manifest into BigQuery without rerunning BrightData.
 - `elt-bigquery export-csv` and `.github/workflows/bigquery-export.yml` provide the compatibility path for users who still need CSV output from `fact_reviews` or `dim_facilities`.
