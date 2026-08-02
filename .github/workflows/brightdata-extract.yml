@@ -176,6 +176,27 @@ jobs:
         with:
           credentials_json: ${{ env.GCP_SERVICE_ACCOUNT_JSON }}
 
+      - name: Validate private CSV path
+        env:
+          CSV_FILE: ${{ inputs.csv_file }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import PurePosixPath
+
+          csv_file = os.environ["CSV_FILE"].replace("\\", "/").strip()
+          path = PurePosixPath(csv_file)
+          if (
+              csv_file.startswith("/")
+              or path.is_absolute()
+              or not path.parts
+              or path.parts[0] not in {"settings", "results"}
+              or any(part in {"", ".", ".."} for part in path.parts)
+              or path.suffix.lower() != ".csv"
+          ):
+              raise SystemExit("csv_file must be a safe .csv path under settings/ or results/")
+          PY
+
       - name: Detect dataset kind
         id: kind
         run: |
@@ -187,26 +208,56 @@ jobs:
 
       - name: Resolve input range
         id: range
+        env:
+          WORKFLOW_TYPE: ${{ inputs.workflow_type }}
+          SKIP_COLUMN_INPUT: ${{ inputs.skip_column }}
+          START_ROW_INPUT: ${{ inputs.start_row }}
+          ROW_LIMIT_INPUT: ${{ inputs.row_limit }}
+          START_FROM_BATCH_INPUT: ${{ inputs.start_from_batch }}
+          ROWS_PER_BATCH_INPUT: ${{ inputs.rows_per_batch }}
+          MAX_BATCHES_INPUT: ${{ inputs.max_batches }}
         run: |
-          SKIP_COLUMN="${{ inputs.skip_column }}"
-          if [ "${{ inputs.workflow_type }}" = "facility" ] || [ "${{ inputs.workflow_type }}" = "reviews" ]; then
-            SKIP_COLUMN=""
-          fi
-          START_ROW="${{ inputs.start_row }}"
-          ROW_LIMIT="${{ inputs.row_limit }}"
-          if [ -n "${{ inputs.start_from_batch }}" ] && [ -n "${{ inputs.rows_per_batch }}" ]; then
-            START_ROW=$(( (${{ inputs.start_from_batch }} - 1) * ${{ inputs.rows_per_batch }} + 1 ))
-            if [ -n "${{ inputs.max_batches }}" ] && [ "${{ inputs.max_batches }}" != "0" ]; then
-              ROW_LIMIT=$(( ${{ inputs.rows_per_batch }} * ${{ inputs.max_batches }} ))
-            elif [ -z "$ROW_LIMIT" ]; then
-              ROW_LIMIT="${{ inputs.rows_per_batch }}"
-            fi
-          fi
-          {
-            echo "skip_column=$SKIP_COLUMN"
-            echo "start_row=$START_ROW"
-            echo "row_limit=$ROW_LIMIT"
-          } >> "$GITHUB_OUTPUT"
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+
+          def positive_int(name: str, *, required: bool = False) -> int | None:
+              value = os.environ[name].strip()
+              if not value:
+                  if required:
+                      raise SystemExit(f"{name} is required")
+                  return None
+              try:
+                  parsed = int(value)
+              except ValueError as exc:
+                  raise SystemExit(f"{name} must be an integer") from exc
+              if parsed < 1:
+                  raise SystemExit(f"{name} must be greater than 0")
+              return parsed
+
+          workflow_type = os.environ["WORKFLOW_TYPE"]
+          skip_column = os.environ["SKIP_COLUMN_INPUT"]
+          if workflow_type in {"facility", "reviews"}:
+              skip_column = ""
+
+          start_row = positive_int("START_ROW_INPUT", required=True)
+          row_limit = positive_int("ROW_LIMIT_INPUT")
+          start_from_batch = positive_int("START_FROM_BATCH_INPUT")
+          rows_per_batch = positive_int("ROWS_PER_BATCH_INPUT")
+          max_batches = positive_int("MAX_BATCHES_INPUT")
+
+          if start_from_batch is not None:
+              if rows_per_batch is None:
+                  raise SystemExit("ROWS_PER_BATCH_INPUT is required when START_FROM_BATCH_INPUT is set")
+              start_row = (start_from_batch - 1) * rows_per_batch + 1
+              if max_batches is not None:
+                  row_limit = rows_per_batch * max_batches
+              elif row_limit is None:
+                  row_limit = rows_per_batch
+
+          print(f"skip_column={skip_column}")
+          print(f"start_row={start_row}")
+          print(f"row_limit={row_limit or ''}")
+          PY
 
       - name: Validate BrightData input CSV
         run: |

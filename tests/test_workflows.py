@@ -12,7 +12,11 @@ def test_brightdata_extract_does_not_emit_raw_payload_as_job_output():
     assert "raw-ingest:" not in workflow_text
     assert "Validate BrightData input CSV" in workflow_text
     assert "elt-brightdata validate-input" in workflow_text
+    assert "Validate private CSV path" in workflow_text
+    assert "csv_file must be a safe .csv path under settings/ or results/" in workflow_text
     assert "Resolve input range" in workflow_text
+    assert "START_FROM_BATCH_INPUT" in workflow_text
+    assert "ROWS_PER_BATCH_INPUT is required when START_FROM_BATCH_INPUT is set" in workflow_text
     assert "work/brightdata-result.json" in workflow_text
     assert "elt-raw-write" in workflow_text
     assert workflow_text.count("elt-raw-write") == 1
@@ -188,7 +192,7 @@ def test_brightdata_extract_supports_manual_reviews_fid_mode():
     workflow_text = Path(".github/workflows/brightdata-extract.yml").read_text(encoding="utf-8")
 
     assert "- reviews" in workflow_text
-    assert '[ "${{ inputs.workflow_type }}" = "reviews" ]' in workflow_text
+    assert 'workflow_type in {"facility", "reviews"}' in workflow_text
 
 
 def test_issue_ops_report_distinguishes_success_failure_and_links_run():
