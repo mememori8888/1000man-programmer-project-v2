@@ -259,6 +259,14 @@ jobs:
             --dataset-kind "${{ steps.kind.outputs.dataset_kind }}" \
             --gcs-bucket "${{ vars.ELT_RAW_GCS_BUCKET }}"
 
+      - name: Ensure BigQuery raw tables
+        if: vars.ELT_RAW_GCS_BUCKET != '' && vars.ELT_BIGQUERY_PROJECT_ID != '' && vars.ELT_BIGQUERY_DATASET != ''
+        run: |
+          elt-bigquery run-sql \
+            --sql-file sql/bigquery/001_create_raw_tables.sql \
+            --project-id "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" \
+            --dataset "${{ vars.ELT_BIGQUERY_DATASET }}"
+
       - name: Load raw row into BigQuery
         if: vars.ELT_RAW_GCS_BUCKET != '' && vars.ELT_BIGQUERY_PROJECT_ID != '' && vars.ELT_BIGQUERY_DATASET != ''
         run: |
@@ -303,6 +311,7 @@ jobs:
             fi
             if [ -n "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" ] && [ -n "${{ vars.ELT_BIGQUERY_DATASET }}" ]; then
               echo "- BigQuery raw dataset: \`${{ vars.ELT_BIGQUERY_PROJECT_ID }}.${{ vars.ELT_BIGQUERY_DATASET }}\`"
+              echo "- BigQuery raw schema: \`ensured\`"
               echo "- BigQuery transform: \`${{ inputs.run_transform }}\`"
             fi
             echo "- artifact: \`brightdata-extract-${{ github.run_id }}\`"
