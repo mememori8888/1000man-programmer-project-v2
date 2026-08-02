@@ -52,6 +52,10 @@ on:
         description: Max rows to extract; empty means all
         required: false
         default: ""
+      max_wait_minutes:
+        description: BrightData snapshot max wait minutes
+        required: false
+        default: "90"
       run_transform:
         description: Run managed BigQuery transform SQL after raw load
         required: false
@@ -103,6 +107,10 @@ on:
         required: false
         type: string
         default: ""
+      max_wait_minutes:
+        required: false
+        type: string
+        default: "90"
       run_transform:
         required: false
         type: string
@@ -228,7 +236,7 @@ jobs:
             --dataset-id "${{ inputs.dataset_id }}" \
             --items-file work/items.json \
             --output work/brightdata-result.json \
-            --max-wait-minutes 90
+            --max-wait-minutes "${{ inputs.max_wait_minutes }}"
 
       - name: Store raw object locally and optionally upload to GCS
         id: local
@@ -302,6 +310,7 @@ jobs:
               echo "- input validation: \`work/input-validation.json\`"
             fi
             echo "- dataset_id: \`${{ inputs.dataset_id }}\`"
+            echo "- max_wait_minutes: \`${{ inputs.max_wait_minutes }}\`"
             echo "- local raw object: \`${{ steps.local.outputs.local_path }}\`"
             echo "- manifest: \`${{ steps.local.outputs.manifest_path }}\`"
             if [ -n "${{ vars.ELT_RAW_GCS_BUCKET }}" ]; then

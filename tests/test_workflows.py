@@ -22,6 +22,8 @@ def test_brightdata_extract_does_not_emit_raw_payload_as_job_output():
     assert "Run BigQuery transforms" in workflow_text
     assert "elt-bigquery run-all-sql" in workflow_text
     assert "run_transform" in workflow_text
+    assert "max_wait_minutes" in workflow_text
+    assert '--max-wait-minutes "${{ inputs.max_wait_minutes }}"' in workflow_text
     assert "GITHUB_STEP_SUMMARY" in workflow_text
 
 
@@ -122,6 +124,7 @@ def test_issue_ops_routes_generic_reviews_to_brightdata_extract():
     assert "results/fid.csv" in workflow_text
     assert "params.start_line" in workflow_text
     assert "params.process_count" in workflow_text
+    assert "params.max_wait_minutes" in workflow_text
     assert "workflow_type != 'reviews'" not in workflow_text
 
 

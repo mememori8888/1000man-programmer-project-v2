@@ -188,6 +188,7 @@ jobs:
       rows_per_batch: ${{ fromJson(needs.parse.outputs.payload_json).params.rows_per_batch || '' }}
       max_batches: ${{ fromJson(needs.parse.outputs.payload_json).params.max_batches || '1' }}
       row_limit: ${{ fromJson(needs.parse.outputs.payload_json).params.process_count || '' }}
+      max_wait_minutes: ${{ fromJson(needs.parse.outputs.payload_json).params.max_wait_minutes || '90' }}
       run_transform: ${{ 'true' }}
 
   serp_relevance:
