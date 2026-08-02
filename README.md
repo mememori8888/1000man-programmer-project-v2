@@ -216,6 +216,7 @@ where row_num = 1;
 - `elt-raw-write`: BrightData から得た `.json` または `.csv` を未加工のまま raw object として保存する CLI。
 - `src/elt_v2/raw_writer.py`: raw object 名、SHA-256、manifest、ローカル保存、GCS upload 境界を管理する。
 - `src/elt_v2/issue_ops.py`: `/run-*` Issue コマンドと JSON パラメータを解析し、BrightData extract 用 payload に変換する。
+  - Issue本文のCSVパスは `settings/` または `results/` 配下の `.csv` のみ許可し、`..` や絶対パスは実行前に拒否する。
 - `.github/workflows/issue-ops-elt.yml`: demo と同じ IssueOps 承認体験を v2 に接続する。
 - `.github/workflows/preflight.yml`: secrets/variables と GCP/private repo 接続を実行前に確認する。
 - `.github/workflows/brightdata-extract.yml`: private data repo の CSV から BrightData Dataset API input items を作り、実取得する。

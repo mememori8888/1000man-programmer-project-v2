@@ -35,3 +35,40 @@ def test_validates_required_sequential_fields():
 
     assert "csv_file is required" in errors
     assert "output_file is required" in errors
+
+
+def test_rejects_unsafe_private_csv_paths():
+    body = """/run-reviews-sequential
+
+```json
+{"csv_file":"../secrets.csv","output_file":"results/reviews.txt","days_back":"30","rows_per_batch":"500","api_batch_size":"50","max_wait_minutes":"90","dataset_id":"gd_luzfs1dn2oa0teb81","skip_column":"web"}
+```
+"""
+    errors = validate_issue_request(parse_issue_request(body))
+
+    assert "csv_file must be a safe CSV path under settings/ or results/" in errors
+    assert "output_file must end with .csv" in errors
+
+
+def test_validates_nested_custom_settings_paths():
+    body = """/run-facility
+
+```json
+{"csv_file":"settings/address.csv","custom_settings":{"address_csv_path":"/tmp/address.csv"}}
+```
+"""
+    errors = validate_issue_request(parse_issue_request(body))
+
+    assert "address_csv_path must be a safe CSV path under settings/ or results/" in errors
+
+
+def test_rejects_non_object_custom_settings():
+    body = """/run-reviews
+
+```json
+{"fid_file":"results/fid.csv","custom_settings":"settings/review.csv"}
+```
+"""
+    errors = validate_issue_request(parse_issue_request(body))
+
+    assert "custom_settings must be an object" in errors
