@@ -33,6 +33,8 @@ def test_bigquery_export_workflow_uses_gcs_csv_destination():
     assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text
     assert "fact_reviews" in workflow_text
     assert "dim_facilities" in workflow_text
+    assert "fact_review_relevance_ranks" in workflow_text
+    assert "GITHUB_STEP_SUMMARY" in workflow_text
 
 
 def test_preflight_workflow_checks_required_runtime_settings():

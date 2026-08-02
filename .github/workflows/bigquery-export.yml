@@ -17,6 +17,7 @@ on:
         options:
           - fact_reviews
           - dim_facilities
+          - fact_review_relevance_ranks
       destination_uri:
         description: GCS URI for CSV output, for example gs://bucket/exports/fact_reviews-*.csv
         required: true
@@ -56,3 +57,12 @@ jobs:
             --dataset "${{ inputs.dataset }}" \
             --table "${{ inputs.table }}" \
             --destination-uri "${{ inputs.destination_uri }}"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## BigQuery CSV export"
+            echo "- table: \`${{ inputs.project_id }}.${{ inputs.dataset }}.${{ inputs.table }}\`"
+            echo "- destination_uri: \`${{ inputs.destination_uri }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
