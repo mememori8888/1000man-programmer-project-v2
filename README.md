@@ -220,6 +220,7 @@ where row_num = 1;
 - `.github/workflows/brightdata-extract.yml`: private data repo の CSV から BrightData Dataset API input items を作り、実取得する。
   - BrightData の有料 Dataset API 実行前に `elt-brightdata validate-input` で CSV ヘッダー、対象行、生成予定 item 数を検証する。
   - `/run-reviews` は旧demoと同じく `fid_file` から `https://www.google.com/reviews?fid=...` 形式の取得URLを作り、raw object 化する。
+  - GCS/BigQuery 設定が揃っている場合、raw load 後に `elt-bigquery run-all-sql` で標準Transformまで自動実行する。
 - `.github/workflows/serp-reviews-smoke.yml`: BrightData SERP API の URL/zone 疎通を診断する。
 - `.github/workflows/serp-relevance-extract.yml`: SERP API response を `serp_relevance` raw object として保存し、BigQuery raw table へ投入する。
 - `.github/workflows/serp-relevance-batch.yml`: private data repo の施設CSV、または BigQuery の直近 `fact_reviews` からSERP対象URLをmatrix化し、複数施設の関連度 raw response 保存と rank fact 更新を行う。

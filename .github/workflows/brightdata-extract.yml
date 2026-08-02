@@ -52,6 +52,14 @@ on:
         description: Max rows to extract; empty means all
         required: false
         default: ""
+      run_transform:
+        description: Run managed BigQuery transform SQL after raw load
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
   workflow_call:
     inputs:
       workflow_type:
@@ -95,6 +103,10 @@ on:
         required: false
         type: string
         default: ""
+      run_transform:
+        required: false
+        type: string
+        default: "true"
     secrets:
       BRIGHTDATA_API_TOKEN:
         required: true
@@ -257,6 +269,13 @@ jobs:
             --dataset "${{ vars.ELT_BIGQUERY_DATASET }}" \
             --source-uri "gs://${{ vars.ELT_RAW_GCS_BUCKET }}/${{ steps.local.outputs.object_name }}"
 
+      - name: Run BigQuery transforms
+        if: inputs.run_transform == 'true' && vars.ELT_RAW_GCS_BUCKET != '' && vars.ELT_BIGQUERY_PROJECT_ID != '' && vars.ELT_BIGQUERY_DATASET != ''
+        run: |
+          elt-bigquery run-all-sql \
+            --project-id "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" \
+            --dataset "${{ vars.ELT_BIGQUERY_DATASET }}"
+
       - name: Upload extract artifact
         uses: actions/upload-artifact@v4
         with:
@@ -284,6 +303,7 @@ jobs:
             fi
             if [ -n "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" ] && [ -n "${{ vars.ELT_BIGQUERY_DATASET }}" ]; then
               echo "- BigQuery raw dataset: \`${{ vars.ELT_BIGQUERY_PROJECT_ID }}.${{ vars.ELT_BIGQUERY_DATASET }}\`"
+              echo "- BigQuery transform: \`${{ inputs.run_transform }}\`"
             fi
             echo "- artifact: \`brightdata-extract-${{ github.run_id }}\`"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -15,6 +15,9 @@ def test_brightdata_extract_does_not_emit_raw_payload_as_job_output():
     assert "Resolve input range" in workflow_text
     assert "work/brightdata-result.json" in workflow_text
     assert "elt-raw-write" in workflow_text
+    assert "Run BigQuery transforms" in workflow_text
+    assert "elt-bigquery run-all-sql" in workflow_text
+    assert "run_transform" in workflow_text
     assert "GITHUB_STEP_SUMMARY" in workflow_text
 
 
