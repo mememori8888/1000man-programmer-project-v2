@@ -152,7 +152,8 @@ jobs:
             echo "dataset_kind=reviews" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build BrightData input items
+      - name: Resolve input range
+        id: range
         run: |
           SKIP_COLUMN="${{ inputs.skip_column }}"
           if [ "${{ inputs.workflow_type }}" = "facility" ]; then
@@ -168,17 +169,41 @@ jobs:
               ROW_LIMIT="${{ inputs.rows_per_batch }}"
             fi
           fi
+          {
+            echo "skip_column=$SKIP_COLUMN"
+            echo "start_row=$START_ROW"
+            echo "row_limit=$ROW_LIMIT"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Validate BrightData input CSV
+        run: |
+          args=(
+            --csv-file "private-data/${{ inputs.csv_file }}"
+            --workflow-type "${{ inputs.workflow_type }}"
+            --days-back "${{ inputs.days_back }}"
+            --skip-column "${{ steps.range.outputs.skip_column }}"
+            --start-row "${{ steps.range.outputs.start_row }}"
+            --query "${{ inputs.query }}"
+            --output work/input-validation.json
+          )
+          if [ -n "${{ steps.range.outputs.row_limit }}" ]; then
+            args+=(--row-limit "${{ steps.range.outputs.row_limit }}")
+          fi
+          elt-brightdata validate-input "${args[@]}"
+
+      - name: Build BrightData input items
+        run: |
           args=(
             --csv-file "private-data/${{ inputs.csv_file }}"
             --workflow-type "${{ inputs.workflow_type }}"
             --output work/items.json
             --days-back "${{ inputs.days_back }}"
-            --skip-column "$SKIP_COLUMN"
-            --start-row "$START_ROW"
+            --skip-column "${{ steps.range.outputs.skip_column }}"
+            --start-row "${{ steps.range.outputs.start_row }}"
             --query "${{ inputs.query }}"
           )
-          if [ -n "$ROW_LIMIT" ]; then
-            args+=(--row-limit "$ROW_LIMIT")
+          if [ -n "${{ steps.range.outputs.row_limit }}" ]; then
+            args+=(--row-limit "${{ steps.range.outputs.row_limit }}")
           fi
           elt-brightdata build-items "${args[@]}"
 
@@ -247,6 +272,9 @@ jobs:
             echo "- workflow_type: \`${{ inputs.workflow_type }}\`"
             echo "- dataset_kind: \`${{ steps.kind.outputs.dataset_kind }}\`"
             echo "- csv_file: \`${{ inputs.csv_file }}\`"
+            if [ -f work/input-validation.json ]; then
+              echo "- input validation: \`work/input-validation.json\`"
+            fi
             echo "- dataset_id: \`${{ inputs.dataset_id }}\`"
             echo "- local raw object: \`${{ steps.local.outputs.local_path }}\`"
             echo "- manifest: \`${{ steps.local.outputs.manifest_path }}\`"

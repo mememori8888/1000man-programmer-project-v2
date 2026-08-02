@@ -10,6 +10,7 @@ from elt_v2.brightdata import (
     BrightDataSerpClient,
     build_dataset_items_from_csv,
     build_serp_relevance_items_from_csv,
+    validate_dataset_csv,
     write_json,
 )
 
@@ -27,6 +28,16 @@ def main(argv: list[str] | None = None) -> int:
     build_parser.add_argument("--start-row", type=int, default=1)
     build_parser.add_argument("--row-limit", type=int)
     build_parser.add_argument("--query", default="")
+
+    validate_parser = subparsers.add_parser("validate-input", help="Validate CSV input before a paid Dataset API run.")
+    validate_parser.add_argument("--csv-file", required=True, type=Path)
+    validate_parser.add_argument("--workflow-type", required=True)
+    validate_parser.add_argument("--days-back", type=int, default=10)
+    validate_parser.add_argument("--skip-column", default="web")
+    validate_parser.add_argument("--start-row", type=int, default=1)
+    validate_parser.add_argument("--row-limit", type=int)
+    validate_parser.add_argument("--query", default="")
+    validate_parser.add_argument("--output", type=Path)
 
     serp_items_parser = subparsers.add_parser("build-serp-items", help="Build SERP relevance input items from CSV.")
     serp_items_parser.add_argument("--csv-file", required=True, type=Path)
@@ -64,6 +75,23 @@ def main(argv: list[str] | None = None) -> int:
         )
         write_json(args.output, items)
         print(json.dumps({"items": len(items), "output": str(args.output)}, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "validate-input":
+        validation = validate_dataset_csv(
+            csv_path=args.csv_file,
+            workflow_type=args.workflow_type,
+            days_back=args.days_back,
+            skip_column=args.skip_column,
+            start_row=args.start_row,
+            row_limit=args.row_limit,
+            query=args.query,
+        )
+        encoded = json.dumps(validation.__dict__, ensure_ascii=False, indent=2)
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(encoded + "\n", encoding="utf-8")
+        print(encoded)
         return 0
 
     if args.command == "build-serp-items":

@@ -10,6 +10,9 @@ def test_brightdata_extract_does_not_emit_raw_payload_as_job_output():
     assert "payload_json:" not in workflow_text
     assert "payload_json<<EOF" not in workflow_text
     assert "raw-ingest:" not in workflow_text
+    assert "Validate BrightData input CSV" in workflow_text
+    assert "elt-brightdata validate-input" in workflow_text
+    assert "Resolve input range" in workflow_text
     assert "work/brightdata-result.json" in workflow_text
     assert "elt-raw-write" in workflow_text
     assert "GITHUB_STEP_SUMMARY" in workflow_text

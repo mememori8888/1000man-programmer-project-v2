@@ -7,6 +7,7 @@ from elt_v2.brightdata import (
     BrightDataSerpClient,
     build_dataset_items_from_csv,
     build_serp_relevance_items_from_csv,
+    validate_dataset_csv,
 )
 
 
@@ -95,6 +96,52 @@ def test_build_items_respects_start_and_limit(tmp_path: Path):
     )
 
     assert items == [{"url": "https://maps.example/2", "days_limit": 10}]
+
+
+def test_validate_dataset_csv_reports_item_count(tmp_path: Path):
+    csv_file = tmp_path / "facilities.csv"
+    csv_file.write_text(
+        "facility_id,GoogleMap,web\n"
+        "f1,https://maps.example/1,yes\n"
+        "f2,https://maps.example/2,\n",
+        encoding="utf-8",
+    )
+
+    validation = validate_dataset_csv(
+        csv_path=csv_file,
+        workflow_type="reviews_sequential",
+        days_back=30,
+        skip_column="web",
+    )
+
+    assert validation.total_rows == 2
+    assert validation.selected_rows == 2
+    assert validation.item_count == 1
+    assert validation.present_columns == ("GoogleMap", "web")
+
+
+def test_validate_dataset_csv_rejects_missing_review_url_column(tmp_path: Path):
+    csv_file = tmp_path / "facilities.csv"
+    csv_file.write_text("facility_id,status\nf1,yes\n", encoding="utf-8")
+
+    try:
+        validate_dataset_csv(csv_path=csv_file, workflow_type="reviews_sequential", skip_column="")
+    except ValueError as exc:
+        assert "at least one" in str(exc)
+    else:
+        raise AssertionError("expected missing URL column validation to fail")
+
+
+def test_validate_dataset_csv_rejects_empty_selected_range(tmp_path: Path):
+    csv_file = tmp_path / "facilities.csv"
+    csv_file.write_text("facility_id,GoogleMap,web\nf1,https://maps.example/1,yes\n", encoding="utf-8")
+
+    try:
+        validate_dataset_csv(csv_path=csv_file, workflow_type="reviews_sequential", start_row=2)
+    except ValueError as exc:
+        assert "selected CSV range has no rows" in str(exc)
+    else:
+        raise AssertionError("expected empty selected range validation to fail")
 
 
 def test_builds_serp_relevance_items_from_csv(tmp_path: Path):

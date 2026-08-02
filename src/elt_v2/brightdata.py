@@ -11,6 +11,10 @@ from urllib.parse import quote_plus
 import requests
 
 
+REVIEW_URL_COLUMNS = ["GoogleMap", "google_map_url", "google_map", "web", "url"]
+FACILITY_ADDRESS_COLUMNS = ["address", "住所", "prefecture", "都道府県"]
+
+
 class HTTPSession(Protocol):
     def post(self, url: str, **kwargs: Any) -> Any: ...
 
@@ -21,6 +25,18 @@ class HTTPSession(Protocol):
 class DatasetSnapshotResult:
     snapshot_id: str
     data: Any
+
+
+@dataclass(frozen=True)
+class DatasetCsvValidation:
+    csv_path: str
+    workflow_type: str
+    total_rows: int
+    selected_rows: int
+    item_count: int
+    required_any_columns: tuple[str, ...]
+    present_columns: tuple[str, ...]
+    skip_column: str
 
 
 class BrightDataDatasetClient:
@@ -169,6 +185,77 @@ def build_dataset_items_from_csv(
     return items
 
 
+def validate_dataset_csv(
+    *,
+    csv_path: Path,
+    workflow_type: str,
+    days_back: int = 10,
+    skip_column: str = "web",
+    start_row: int = 1,
+    row_limit: int | None = None,
+    query: str = "",
+) -> DatasetCsvValidation:
+    if start_row < 1:
+        raise ValueError("start_row must be greater than 0")
+    if row_limit is not None and row_limit < 1:
+        raise ValueError("row_limit must be greater than 0 when provided")
+    if not csv_path.exists():
+        raise ValueError(f"csv_path does not exist: {csv_path}")
+    if csv_path.suffix.lower() != ".csv":
+        raise ValueError("csv_path must be a .csv file")
+
+    header, rows = _read_csv_header_and_rows(csv_path)
+    if not header:
+        raise ValueError(f"csv_path has no header row: {csv_path}")
+
+    if workflow_type in {"reviews", "reviews_sequential", "reviews_recent_relevance"}:
+        required_any_columns = tuple(REVIEW_URL_COLUMNS)
+        if skip_column and not _has_any_column(header, [skip_column]):
+            raise ValueError(f"skip_column is not present in CSV header: {skip_column}")
+    elif workflow_type == "facility":
+        required_any_columns = tuple(FACILITY_ADDRESS_COLUMNS)
+    else:
+        raise ValueError(f"unsupported workflow_type: {workflow_type}")
+
+    if not _has_any_column(header, list(required_any_columns)):
+        raise ValueError(
+            "CSV must include at least one of these columns for "
+            f"{workflow_type}: {', '.join(required_any_columns)}"
+        )
+
+    selected_rows = rows[start_row - 1 :]
+    if row_limit is not None:
+        selected_rows = selected_rows[:row_limit]
+    if not selected_rows:
+        raise ValueError("selected CSV range has no rows")
+
+    item_count = len(
+        build_dataset_items_from_csv(
+            csv_path=csv_path,
+            workflow_type=workflow_type,
+            days_back=days_back,
+            skip_column=skip_column,
+            start_row=start_row,
+            row_limit=row_limit,
+            query=query,
+        )
+    )
+    if item_count < 1:
+        raise ValueError("selected CSV range produced no BrightData input items")
+
+    present_columns = tuple(column for column in required_any_columns if _has_any_column(header, [column]))
+    return DatasetCsvValidation(
+        csv_path=str(csv_path),
+        workflow_type=workflow_type,
+        total_rows=len(rows),
+        selected_rows=len(selected_rows),
+        item_count=item_count,
+        required_any_columns=required_any_columns,
+        present_columns=present_columns,
+        skip_column=skip_column,
+    )
+
+
 def build_serp_relevance_items_from_csv(
     *,
     csv_path: Path,
@@ -208,8 +295,13 @@ def write_json(path: Path, payload: Any) -> None:
 
 
 def _read_csv_rows(csv_path: Path) -> list[dict[str, str]]:
+    return _read_csv_header_and_rows(csv_path)[1]
+
+
+def _read_csv_header_and_rows(csv_path: Path) -> tuple[list[str], list[dict[str, str]]]:
     with csv_path.open("r", encoding="utf-8-sig", newline="") as handle:
-        return list(csv.DictReader(handle))
+        reader = csv.DictReader(handle)
+        return list(reader.fieldnames or []), list(reader)
 
 
 def _first_present(row: dict[str, str], keys: list[str]) -> str:
@@ -222,3 +314,8 @@ def _first_present(row: dict[str, str], keys: list[str]) -> str:
         if value:
             return str(value).strip()
     return ""
+
+
+def _has_any_column(header: list[str], keys: list[str]) -> bool:
+    lowered = {column.lower() for column in header}
+    return any(key in header or key.lower() in lowered for key in keys)
