@@ -33,9 +33,10 @@ def test_bigquery_export_workflow_uses_gcs_csv_destination():
     assert "workflow_call:" in workflow_text
     assert "elt-bigquery export-csv" in workflow_text
     assert "--destination-uri" in workflow_text
-    assert "Resolve destination URI" in workflow_text
+    assert "--gcs-bucket" in workflow_text
     assert "legacy_output_path" in workflow_text
     assert "exports" in workflow_text
+    assert "work/export-result.json" in workflow_text
     assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text
     assert "fact_reviews" in workflow_text
     assert "dim_facilities" in workflow_text

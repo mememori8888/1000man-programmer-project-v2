@@ -85,50 +85,27 @@ jobs:
         with:
           credentials_json: ${{ env.GCP_SERVICE_ACCOUNT_JSON }}
 
-      - name: Resolve destination URI
-        id: destination
-        env:
-          DESTINATION_URI: ${{ inputs.destination_uri }}
-          GCS_BUCKET: ${{ inputs.gcs_bucket }}
-          LEGACY_OUTPUT_PATH: ${{ inputs.legacy_output_path }}
-          TABLE: ${{ inputs.table }}
-        run: |
-          python - <<'PY' >> "$GITHUB_OUTPUT"
-          import os
-          from pathlib import PurePosixPath
-
-          destination_uri = os.environ.get("DESTINATION_URI", "").strip()
-          if not destination_uri:
-              bucket = os.environ.get("GCS_BUCKET", "").strip()
-              if not bucket:
-                  raise SystemExit("destination_uri or gcs_bucket is required")
-              legacy_output_path = os.environ.get("LEGACY_OUTPUT_PATH", "").strip() or f"{os.environ['TABLE']}.csv"
-              normalized = legacy_output_path.replace("\\", "/").lstrip("/")
-              parts = [part for part in normalized.split("/") if part not in {"", "."}]
-              if not parts or any(part == ".." for part in parts):
-                  raise SystemExit(f"legacy_output_path is not safe: {legacy_output_path}")
-              path = PurePosixPath("exports", *parts)
-              if path.suffix.lower() != ".csv":
-                  path = path.with_suffix(".csv")
-              if "*" not in path.name:
-                  path = path.with_name(f"{path.stem}-*{path.suffix}")
-              destination_uri = f"gs://{bucket}/{path.as_posix()}"
-          print(f"destination_uri={destination_uri}")
-          PY
-
       - name: Export table to CSV
         run: |
+          mkdir -p work
           elt-bigquery export-csv \
             --project-id "${{ inputs.project_id }}" \
             --dataset "${{ inputs.dataset }}" \
             --table "${{ inputs.table }}" \
-            --destination-uri "${{ steps.destination.outputs.destination_uri }}"
+            --destination-uri "${{ inputs.destination_uri }}" \
+            --gcs-bucket "${{ inputs.gcs_bucket }}" \
+            --legacy-output-path "${{ inputs.legacy_output_path }}" \
+            | tee work/export-result.json
 
       - name: Summary
         if: always()
         run: |
-          {
-            echo "## BigQuery CSV export"
-            echo "- table: \`${{ inputs.project_id }}.${{ inputs.dataset }}.${{ inputs.table }}\`"
-            echo "- destination_uri: \`${{ steps.destination.outputs.destination_uri }}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path("work/export-result.json").read_text(encoding="utf-8"))
+          print("## BigQuery CSV export")
+          print(f"- table: `{result['table_id']}`")
+          print(f"- destination_uri: `{result['destination_uri']}`")
+          PY

@@ -15,6 +15,7 @@ from elt_v2.bigquery_loader import (
     parse_gcs_uri,
     render_compatibility_audit_sql,
     render_sql_template,
+    resolve_csv_export_destination_uri,
     run_sql_files,
 )
 
@@ -168,6 +169,30 @@ def test_builds_csv_export_plan():
 
     assert plan.table_id == "project-123.brightdata_raw.fact_reviews"
     assert plan.destination_uri == "gs://export-bucket/reviews/fact_reviews-*.csv"
+
+
+def test_resolves_legacy_csv_export_destination_uri():
+    assert (
+        resolve_csv_export_destination_uri(
+            gcs_bucket="export-bucket",
+            legacy_output_path="results/dental_reviews.csv",
+            table="fact_reviews",
+        )
+        == "gs://export-bucket/exports/results/dental_reviews-*.csv"
+    )
+    assert (
+        resolve_csv_export_destination_uri(gcs_bucket="export-bucket", legacy_output_path="summary", table="fact_reviews")
+        == "gs://export-bucket/exports/summary-*.csv"
+    )
+
+
+def test_rejects_unsafe_legacy_csv_export_path():
+    with pytest.raises(ValueError, match="not safe"):
+        resolve_csv_export_destination_uri(
+            gcs_bucket="export-bucket",
+            legacy_output_path="../secret.csv",
+            table="fact_reviews",
+        )
 
 
 def test_builds_compatibility_audit_sql(tmp_path):

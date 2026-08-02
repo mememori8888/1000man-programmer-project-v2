@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import unquote
 
@@ -131,11 +131,19 @@ def build_csv_export_plan(
     project_id: str,
     dataset: str,
     table: str,
-    destination_uri: str,
+    destination_uri: str = "",
+    gcs_bucket: str = "",
+    legacy_output_path: str = "",
 ) -> CsvExportPlan:
     _validate_identifier(project_id, "project_id", allow_dash=True)
     _validate_identifier(dataset, "dataset")
     _validate_identifier(table, "table")
+    destination_uri = resolve_csv_export_destination_uri(
+        destination_uri=destination_uri,
+        gcs_bucket=gcs_bucket,
+        legacy_output_path=legacy_output_path,
+        table=table,
+    )
     if not destination_uri.startswith("gs://"):
         raise ValueError("destination_uri must be a gs:// URI")
     if not destination_uri.lower().endswith(".csv") and "*" not in destination_uri:
@@ -146,6 +154,34 @@ def build_csv_export_plan(
         table=table,
         destination_uri=destination_uri,
     )
+
+
+def resolve_csv_export_destination_uri(
+    *,
+    destination_uri: str = "",
+    gcs_bucket: str = "",
+    legacy_output_path: str = "",
+    table: str = "",
+) -> str:
+    destination_uri = destination_uri.strip()
+    if destination_uri:
+        return destination_uri
+
+    bucket = gcs_bucket.strip()
+    if not bucket:
+        raise ValueError("destination_uri or gcs_bucket is required")
+
+    normalized = (legacy_output_path.strip() or f"{table}.csv").replace("\\", "/").lstrip("/")
+    parts = [part for part in normalized.split("/") if part not in {"", "."}]
+    if not parts or any(part == ".." for part in parts):
+        raise ValueError(f"legacy_output_path is not safe: {legacy_output_path}")
+
+    path = PurePosixPath("exports", *parts)
+    if path.suffix.lower() != ".csv":
+        path = path.with_suffix(".csv")
+    if "*" not in path.name:
+        path = path.with_name(f"{path.stem}-*{path.suffix}")
+    return f"gs://{bucket}/{path.as_posix()}"
 
 
 def build_compatibility_audit_plan(

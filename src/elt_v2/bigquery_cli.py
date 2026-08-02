@@ -14,6 +14,7 @@ from elt_v2.bigquery_loader import (
     load_manifest_file,
     load_raw_payload_to_bigquery,
     render_sql_template,
+    resolve_csv_export_destination_uri,
     replay_gcs_raw_object_to_bigquery,
     query_recent_review_serp_targets,
     run_compatibility_audit,
@@ -63,7 +64,18 @@ def main(argv: list[str] | None = None) -> int:
     export_parser.add_argument("--project-id", required=True)
     export_parser.add_argument("--dataset", required=True)
     export_parser.add_argument("--table", required=True)
-    export_parser.add_argument("--destination-uri", required=True)
+    export_parser.add_argument("--destination-uri", default="")
+    export_parser.add_argument("--gcs-bucket", default="")
+    export_parser.add_argument("--legacy-output-path", default="")
+
+    resolve_export_parser = subparsers.add_parser(
+        "resolve-export-uri",
+        help="Resolve a GCS CSV export URI from destination_uri or legacy output path.",
+    )
+    resolve_export_parser.add_argument("--destination-uri", default="")
+    resolve_export_parser.add_argument("--gcs-bucket", default="")
+    resolve_export_parser.add_argument("--legacy-output-path", default="")
+    resolve_export_parser.add_argument("--table", required=True)
 
     audit_parser = subparsers.add_parser(
         "audit-csv-compat",
@@ -163,6 +175,8 @@ def main(argv: list[str] | None = None) -> int:
             dataset=args.dataset,
             table=args.table,
             destination_uri=args.destination_uri,
+            gcs_bucket=args.gcs_bucket,
+            legacy_output_path=args.legacy_output_path,
         )
         job_id = export_table_to_gcs_csv(plan)
         print(
@@ -172,6 +186,16 @@ def main(argv: list[str] | None = None) -> int:
                 indent=2,
             )
         )
+        return 0
+
+    if args.command == "resolve-export-uri":
+        destination_uri = resolve_csv_export_destination_uri(
+            destination_uri=args.destination_uri,
+            gcs_bucket=args.gcs_bucket,
+            legacy_output_path=args.legacy_output_path,
+            table=args.table,
+        )
+        print(json.dumps({"destination_uri": destination_uri}, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "audit-csv-compat":
