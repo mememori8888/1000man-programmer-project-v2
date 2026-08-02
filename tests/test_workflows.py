@@ -65,6 +65,10 @@ def test_serp_relevance_extract_workflow_stores_raw_response():
     assert "--dataset-kind serp_relevance" in workflow_text
     assert "sql/bigquery/001_create_raw_tables.sql" in workflow_text
     assert "elt-bigquery load-raw" in workflow_text
+    assert "sql/bigquery/020_parse_raw_serp_responses.sql" in workflow_text
+    assert "sql/bigquery/120_build_review_relevance_ranks.sql" in workflow_text
+    assert "run_transform" in workflow_text
+    assert "GITHUB_STEP_SUMMARY" in workflow_text
     assert "ELT_RAW_GCS_BUCKET" in workflow_text
 
 

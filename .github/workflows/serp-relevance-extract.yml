@@ -14,6 +14,14 @@ on:
         description: Source run id for raw storage
         required: false
         default: manual-serp
+      run_transform:
+        description: Run SERP parse and relevance fact SQL after raw load
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 permissions:
   contents: read
@@ -116,6 +124,18 @@ jobs:
             --dataset "${{ vars.ELT_BIGQUERY_DATASET }}" \
             --source-uri "gs://${{ vars.ELT_RAW_GCS_BUCKET }}/${{ steps.local.outputs.object_name }}"
 
+      - name: Run SERP transforms
+        if: inputs.run_transform == 'true' && vars.ELT_RAW_GCS_BUCKET != '' && vars.ELT_BIGQUERY_PROJECT_ID != '' && vars.ELT_BIGQUERY_DATASET != ''
+        run: |
+          elt-bigquery run-sql \
+            --sql-file sql/bigquery/020_parse_raw_serp_responses.sql \
+            --project-id "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" \
+            --dataset "${{ vars.ELT_BIGQUERY_DATASET }}"
+          elt-bigquery run-sql \
+            --sql-file sql/bigquery/120_build_review_relevance_ranks.sql \
+            --project-id "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" \
+            --dataset "${{ vars.ELT_BIGQUERY_DATASET }}"
+
       - name: Upload SERP raw artifact
         uses: actions/upload-artifact@v4
         with:
@@ -123,3 +143,22 @@ jobs:
           path: work/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## SERP relevance raw extract"
+            echo "- url: \`${{ inputs.url }}\`"
+            echo "- source_run_id: \`${{ inputs.source_run_id }}-${{ github.run_id }}\`"
+            echo "- raw object: \`${{ steps.local.outputs.local_path }}\`"
+            echo "- manifest: \`${{ steps.local.outputs.manifest_path }}\`"
+            if [ -n "${{ vars.ELT_RAW_GCS_BUCKET }}" ]; then
+              echo "- GCS raw object: \`gs://${{ vars.ELT_RAW_GCS_BUCKET }}/${{ steps.local.outputs.object_name }}\`"
+            fi
+            if [ -n "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" ] && [ -n "${{ vars.ELT_BIGQUERY_DATASET }}" ]; then
+              echo "- BigQuery dataset: \`${{ vars.ELT_BIGQUERY_PROJECT_ID }}.${{ vars.ELT_BIGQUERY_DATASET }}\`"
+              echo "- BigQuery transform: \`${{ inputs.run_transform }}\`"
+            fi
+            echo "- artifact: \`serp-relevance-raw-${{ github.run_id }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
