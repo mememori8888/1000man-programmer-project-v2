@@ -17,6 +17,10 @@ def test_brightdata_extract_does_not_emit_raw_payload_as_job_output():
     assert "elt-raw-write" in workflow_text
     assert workflow_text.count("elt-raw-write") == 1
     assert "optionally upload to GCS" in workflow_text
+    assert "workflow_call:" in workflow_text
+    assert "gcs_uri:" in workflow_text
+    assert "manifest_uri:" in workflow_text
+    assert "print(f\"manifest_uri={result['gcs_uri']}.manifest.json\")" in workflow_text
     assert "Ensure BigQuery raw tables" in workflow_text
     assert "sql/bigquery/001_create_raw_tables.sql" in workflow_text
     assert "Run BigQuery transforms" in workflow_text
@@ -125,6 +129,10 @@ def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract(
     assert "uses: ./.github/workflows/bigquery-export.yml" in workflow_text
     assert "uses: ./.github/workflows/serp-relevance-batch.yml" in workflow_text
     assert "needs: [parse, extract]" in workflow_text
+    assert "EXTRACT_GCS_URI" in workflow_text
+    assert "EXTRACT_MANIFEST_URI" in workflow_text
+    assert "raw payload" in workflow_text
+    assert "raw manifest" in workflow_text
     assert "workflow_type == 'reviews_recent_relevance'" in workflow_text
     assert "target_source: bigquery_recent_reviews" in workflow_text
     assert "params.relevance_rank_limit" in workflow_text

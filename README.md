@@ -223,6 +223,7 @@ where row_num = 1;
   - `/run-reviews` は旧demoと同じく `fid_file` から `https://www.google.com/reviews?fid=...` 形式の取得URLを作り、raw object 化する。
   - raw load 前に `001_create_raw_tables.sql` を冪等実行し、初回実行でも raw table 不在で止まらないようにする。
   - GCS/BigQuery 設定が揃っている場合、raw load 後に `elt-bigquery run-all-sql` で標準Transformまで自動実行する。
+  - IssueOps から呼び出した場合、raw payload と manifest の GCS URI を最終 Issue コメントにも表示する。
 - `.github/workflows/serp-reviews-smoke.yml`: BrightData SERP API の URL/zone 疎通を診断する。
 - `.github/workflows/serp-relevance-extract.yml`: SERP API response を `serp_relevance` raw object として保存し、BigQuery raw table へ投入する。
 - `.github/workflows/serp-relevance-batch.yml`: private data repo の施設CSV、または BigQuery の直近 `fact_reviews` からSERP対象URLをmatrix化し、複数施設の関連度 raw response 保存と rank fact 更新を行う。Issue の `relevance_rank_limit` は `fact_review_relevance_ranks` の最大順位として反映する。

@@ -243,6 +243,8 @@ jobs:
         uses: actions/github-script@v7
         env:
           EXTRACT_RESULT: ${{ needs.extract.result }}
+          EXTRACT_GCS_URI: ${{ needs.extract.outputs.gcs_uri }}
+          EXTRACT_MANIFEST_URI: ${{ needs.extract.outputs.manifest_uri }}
           SERP_RESULT: ${{ needs.serp_relevance.result }}
           EXPORT_REVIEWS_RESULT: ${{ needs.export_reviews.result }}
           EXPORT_RELEVANCE_RESULT: ${{ needs.export_relevance.result }}
@@ -256,6 +258,8 @@ jobs:
         with:
           script: |
             const extractResult = process.env.EXTRACT_RESULT || 'skipped';
+            const extractGcsUri = process.env.EXTRACT_GCS_URI || '';
+            const extractManifestUri = process.env.EXTRACT_MANIFEST_URI || '';
             const serpResult = process.env.SERP_RESULT || 'skipped';
             const exportReviewsResult = process.env.EXPORT_REVIEWS_RESULT || 'skipped';
             const exportRelevanceResult = process.env.EXPORT_RELEVANCE_RESULT || 'skipped';
@@ -278,6 +282,8 @@ jobs:
               ? activeResults.map(([name, result]) => `- ${name}: \`${result}\``)
               : ['- no execution job was started'];
             const exportLines = [
+              extractGcsUri && `- raw payload: \`${extractGcsUri}\``,
+              extractManifestUri && `- raw manifest: \`${extractManifestUri}\``,
               exportReviewsDestinationUri && `- fact/dimension CSV: \`${exportReviewsDestinationUri}\``,
               exportRelevanceDestinationUri && `- relevance CSV: \`${exportRelevanceDestinationUri}\``,
             ].filter(Boolean);
