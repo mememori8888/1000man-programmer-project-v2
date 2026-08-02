@@ -38,13 +38,11 @@ jobs:
         run: |
           mkdir -p work
           python - <<'PY'
-          import json
           import os
           from pathlib import Path
 
-          payload = json.loads(os.environ["EVIDENCE_JSON"])
           Path("work/release-evidence.json").write_text(
-              json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+              os.environ["EVIDENCE_JSON"] + "\n",
               encoding="utf-8",
           )
           PY

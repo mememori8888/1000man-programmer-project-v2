@@ -278,6 +278,8 @@ def test_release_evidence_workflow_validates_pasted_json_and_archives_result():
     assert "workflow_dispatch:" in workflow_text
     assert "evidence_json:" in workflow_text
     assert "fail_on_warning:" in workflow_text
+    assert "os.environ[\"EVIDENCE_JSON\"]" in workflow_text
+    assert "json.loads(os.environ[\"EVIDENCE_JSON\"])" not in workflow_text
     assert "elt-evidence validate --file work/release-evidence.json" in workflow_text
     assert "work/release-evidence-validation.json" in workflow_text
     assert "release-evidence-validation" in workflow_text

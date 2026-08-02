@@ -29,7 +29,36 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "validate":
-        payload = json.loads(args.file.read_text(encoding="utf-8-sig"))
+        try:
+            payload = json.loads(args.file.read_text(encoding="utf-8-sig"))
+        except (FileNotFoundError, json.JSONDecodeError) as exc:
+            print(
+                json.dumps(
+                    {
+                        "valid": False,
+                        "errors": [f"release evidence JSON could not be read: {exc}"],
+                        "warnings": [],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            sys.stderr.write("release evidence is incomplete\n")
+            return 1
+        if not isinstance(payload, dict):
+            print(
+                json.dumps(
+                    {
+                        "valid": False,
+                        "errors": ["release evidence JSON must be an object"],
+                        "warnings": [],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            sys.stderr.write("release evidence is incomplete\n")
+            return 1
         result = validate_evidence(payload)
         print(
             json.dumps(

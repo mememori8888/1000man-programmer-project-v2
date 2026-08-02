@@ -29,6 +29,7 @@ def test_validates_complete_release_evidence():
 
     assert result.valid
     assert result.errors == []
+    assert build_evidence_template()["issueops"]["approved_comment"] == "/承認"
 
 
 def test_rejects_missing_release_evidence_fields():
@@ -83,3 +84,23 @@ def test_evidence_cli_template_and_validate(tmp_path, capsys):
     assert main(["validate", "--file", str(evidence_path)]) == 0
     result_output = json.loads(capsys.readouterr().out)
     assert result_output["valid"] is True
+
+
+def test_evidence_cli_reports_invalid_json(tmp_path, capsys):
+    evidence_path = tmp_path / "release-evidence.json"
+    evidence_path.write_text("{not-json", encoding="utf-8")
+
+    assert main(["validate", "--file", str(evidence_path)]) == 1
+    result_output = json.loads(capsys.readouterr().out)
+    assert result_output["valid"] is False
+    assert "release evidence JSON could not be read" in result_output["errors"][0]
+
+
+def test_evidence_cli_rejects_non_object_json(tmp_path, capsys):
+    evidence_path = tmp_path / "release-evidence.json"
+    evidence_path.write_text("[]", encoding="utf-8")
+
+    assert main(["validate", "--file", str(evidence_path)]) == 1
+    result_output = json.loads(capsys.readouterr().out)
+    assert result_output["valid"] is False
+    assert result_output["errors"] == ["release evidence JSON must be an object"]
