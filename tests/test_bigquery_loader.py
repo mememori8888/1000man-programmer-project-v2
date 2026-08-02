@@ -204,9 +204,13 @@ def test_builds_recent_review_serp_targets_sql():
 
     assert "`project-123.brightdata_raw.fact_reviews`" in sql
     assert "`project-123.brightdata_raw.dim_facilities`" in sql
+    assert "`project-123.brightdata_raw.raw_reviews_parsed`" in sql
     assert "interval 30 day" in sql
     assert "limit 10" in sql
     assert "google_map_url" in sql
+    assert "$.input.url" in sql
+    assert "left join `project-123.brightdata_raw.dim_facilities`" in sql
+    assert "left join review_input_urls" in sql
 
 
 def test_rejects_non_gcs_csv_export_uri():

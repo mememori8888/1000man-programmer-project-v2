@@ -274,17 +274,41 @@ with recent_facilities as (
   where coalesce(review_date, date(extracted_at)) >= date_sub(current_date(), interval {days_back} day)
   group by facility_id
 ),
-targets as (
+review_input_urls as (
+  select
+    facility_id,
+    array_agg(
+      coalesce(
+        nullif(json_value(raw_review_json, '$.input.url'), ''),
+        nullif(json_value(raw_review_json, '$.url'), '')
+      ) ignore nulls
+      order by extracted_at desc
+      limit 1
+    )[safe_offset(0)] as google_map_url
+  from `{project_id}.{dataset}.raw_reviews_parsed`
+  group by facility_id
+),
+target_candidates as (
   select
     recent_facilities.facility_id,
-    dim_facilities.google_map_url as url,
+    coalesce(
+      nullif(dim_facilities.google_map_url, ''),
+      nullif(review_input_urls.google_map_url, ''),
+      if(starts_with(recent_facilities.facility_id, 'http'), recent_facilities.facility_id, null)
+    ) as url,
     recent_facilities.latest_review_extracted_at,
     recent_facilities.recent_review_count
   from recent_facilities
-  join `{project_id}.{dataset}.dim_facilities` as dim_facilities
+  left join `{project_id}.{dataset}.dim_facilities` as dim_facilities
     using (facility_id)
-  where dim_facilities.google_map_url is not null
-    and dim_facilities.google_map_url != ''
+  left join review_input_urls
+    using (facility_id)
+),
+targets as (
+  select *
+  from target_candidates
+  where url is not null
+    and url != ''
 )
 select
   row_number() over (
