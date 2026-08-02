@@ -255,6 +255,14 @@ def test_rejects_non_gcs_csv_export_uri():
             destination_uri="gs://export-bucket/reviews/fact_reviews.json",
         )
 
+    with pytest.raises(ValueError, match="csv"):
+        build_csv_export_plan(
+            project_id="project-123",
+            dataset="brightdata_raw",
+            table="fact_reviews",
+            destination_uri="gs://export-bucket/reviews/fact_reviews-*.json",
+        )
+
 
 def test_transform_sql_file_registry_includes_parse_steps():
     assert "sql/bigquery/010_parse_raw_reviews.sql" in TRANSFORM_SQL_FILES

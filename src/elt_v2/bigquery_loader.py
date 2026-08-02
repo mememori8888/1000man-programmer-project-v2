@@ -146,8 +146,8 @@ def build_csv_export_plan(
     )
     if not destination_uri.startswith("gs://"):
         raise ValueError("destination_uri must be a gs:// URI")
-    if not destination_uri.lower().endswith(".csv") and "*" not in destination_uri:
-        raise ValueError("destination_uri should end with .csv or include a wildcard for sharded CSV export")
+    if not destination_uri.lower().endswith(".csv"):
+        raise ValueError("destination_uri must end with .csv, including sharded exports such as file-*.csv")
     return CsvExportPlan(
         project_id=project_id,
         dataset=dataset,
