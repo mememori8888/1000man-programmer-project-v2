@@ -8,6 +8,9 @@ This project moves heavy matching and deduplication out of Python and into BigQu
 - It writes the untouched payload under a deterministic raw object path.
 - It writes a sidecar manifest with `source_run_id`, SHA-256, byte size, object name, and extraction time.
 - The same object can be written locally for tests or uploaded to GCS when `google-cloud-storage` is installed.
+- `elt-brightdata build-items` converts private-data CSV rows into BrightData Dataset API input items.
+- `elt-brightdata run-dataset` runs the BrightData Dataset API `trigger -> progress -> snapshot` flow and writes raw JSON output.
+- `elt-brightdata run-serp` preserves the SERP API request path used by the existing demo for focused diagnostics and later relevance-rank work.
 
 ## Next boundary
 

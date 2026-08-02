@@ -29,8 +29,10 @@ function buildParams() {
   if (selected === "facility") {
     return {
       workflow: selected,
+      csv_file: "settings/address.csv",
       custom_settings: {
         query: "歯科医院",
+        address_csv_path: "settings/address.csv",
       },
     };
   }

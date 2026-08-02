@@ -122,7 +122,7 @@ jobs:
 
   ingest:
     needs: parse
-    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true'
+    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.parse.outputs.workflow_type == 'reviews'
     uses: ./.github/workflows/raw-elt-ingest.yml
     with:
       dataset_kind: ${{ needs.parse.outputs.dataset_kind }}
@@ -132,8 +132,25 @@ jobs:
       bigquery_project_id: ${{ vars.ELT_BIGQUERY_PROJECT_ID || '' }}
       bigquery_dataset: ${{ vars.ELT_BIGQUERY_DATASET || '' }}
 
+  extract:
+    needs: parse
+    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.parse.outputs.workflow_type != 'reviews'
+    uses: ./.github/workflows/brightdata-extract.yml
+    secrets: inherit
+    with:
+      workflow_type: ${{ needs.parse.outputs.workflow_type }}
+      csv_file: ${{ fromJson(needs.parse.outputs.payload_json).params.csv_file || fromJson(needs.parse.outputs.payload_json).params.custom_settings.address_csv_path || 'settings/address.csv' }}
+      dataset_id: ${{ fromJson(needs.parse.outputs.payload_json).params.dataset_id || 'gd_luzfs1dn2oa0teb81' }}
+      days_back: ${{ fromJson(needs.parse.outputs.payload_json).params.days_back || '10' }}
+      skip_column: ${{ fromJson(needs.parse.outputs.payload_json).params.skip_column || 'web' }}
+      query: ${{ fromJson(needs.parse.outputs.payload_json).params.custom_settings.query || '' }}
+      start_from_batch: ${{ fromJson(needs.parse.outputs.payload_json).params.start_from_batch || '1' }}
+      rows_per_batch: ${{ fromJson(needs.parse.outputs.payload_json).params.rows_per_batch || '500' }}
+      max_batches: ${{ fromJson(needs.parse.outputs.payload_json).params.max_batches || '1' }}
+      row_limit: ""
+
   report:
-    needs: [parse, ingest]
+    needs: [parse, ingest, extract]
     if: always() && needs.parse.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -141,11 +158,13 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const result = '${{ needs.ingest.result }}';
+            const rawResult = '${{ needs.ingest.result }}';
+            const extractResult = '${{ needs.extract.result }}';
+            const result = extractResult && extractResult !== 'skipped' ? extractResult : rawResult;
             const valid = '${{ needs.parse.outputs.valid }}' === 'true';
             const errors = `${{ needs.parse.outputs.validation_errors }}`;
             const body = valid
-              ? `v2 raw ELT ingest result: \`${result}\`\n\nArtifacts に raw object と manifest が保存されています。`
+              ? `v2 ELT result: \`${result}\`\n\nBrightData extract または raw ingest の artifact に raw object と manifest が保存されています。`
               : `v2 ELT validation failed:\n\n\`\`\`\n${errors || 'Unknown validation error'}\n\`\`\``;
             await github.rest.issues.createComment({
               owner: context.repo.owner,

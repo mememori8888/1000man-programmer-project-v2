@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "GCS and BigQuery ELT foundation for scalable BrightData workflows"
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+  "requests>=2.31.0",
+]
 
 [project.optional-dependencies]
 gcp = [
@@ -17,6 +19,7 @@ dev = [
 
 [project.scripts]
 elt-bigquery = "elt_v2.bigquery_cli:main"
+elt-brightdata = "elt_v2.brightdata_cli:main"
 elt-raw-write = "elt_v2.cli:main"
 
 [build-system]

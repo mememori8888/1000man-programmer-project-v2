@@ -1,0 +1,217 @@
+name: BrightData extract
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_type:
+        description: v2 workflow type
+        required: true
+        type: choice
+        options:
+          - reviews_sequential
+          - reviews_recent_relevance
+          - facility
+      csv_file:
+        description: CSV path inside private data repo
+        required: true
+        default: results/dental_new.csv
+      dataset_id:
+        description: BrightData Dataset ID
+        required: true
+        default: gd_luzfs1dn2oa0teb81
+      days_back:
+        description: Review days back
+        required: false
+        default: "10"
+      skip_column:
+        description: Skip rows when this column is empty
+        required: false
+        default: web
+      query:
+        description: Facility search query
+        required: false
+        default: ""
+      start_row:
+        description: 1-based start row
+        required: false
+        default: "1"
+      start_from_batch:
+        description: 1-based batch number; overrides start_row when set
+        required: false
+        default: ""
+      rows_per_batch:
+        description: Rows per batch; used with start_from_batch
+        required: false
+        default: ""
+      max_batches:
+        description: Max batch count; 0 or empty means one batch for IssueOps safety
+        required: false
+        default: ""
+      row_limit:
+        description: Max rows to extract; empty means all
+        required: false
+        default: ""
+  workflow_call:
+    inputs:
+      workflow_type:
+        required: true
+        type: string
+      csv_file:
+        required: true
+        type: string
+      dataset_id:
+        required: true
+        type: string
+      days_back:
+        required: false
+        type: string
+        default: "10"
+      skip_column:
+        required: false
+        type: string
+        default: web
+      query:
+        required: false
+        type: string
+        default: ""
+      start_row:
+        required: false
+        type: string
+        default: "1"
+      start_from_batch:
+        required: false
+        type: string
+        default: ""
+      rows_per_batch:
+        required: false
+        type: string
+        default: ""
+      max_batches:
+        required: false
+        type: string
+        default: ""
+      row_limit:
+        required: false
+        type: string
+        default: ""
+    secrets:
+      BRIGHTDATA_API_TOKEN:
+        required: true
+      PRIVATE_REPO_PAT:
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    outputs:
+      payload_json: ${{ steps.payload.outputs.payload_json }}
+      dataset_kind: ${{ steps.kind.outputs.dataset_kind }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout private data
+        uses: actions/checkout@v4
+        with:
+          repository: mememori8888/googlemap
+          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          path: private-data
+          sparse-checkout: |
+            settings
+            results
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Detect dataset kind
+        id: kind
+        run: |
+          if [ "${{ inputs.workflow_type }}" = "facility" ]; then
+            echo "dataset_kind=facilities" >> "$GITHUB_OUTPUT"
+          else
+            echo "dataset_kind=reviews" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build BrightData input items
+        run: |
+          SKIP_COLUMN="${{ inputs.skip_column }}"
+          if [ "${{ inputs.workflow_type }}" = "facility" ]; then
+            SKIP_COLUMN=""
+          fi
+          START_ROW="${{ inputs.start_row }}"
+          ROW_LIMIT="${{ inputs.row_limit }}"
+          if [ -n "${{ inputs.start_from_batch }}" ] && [ -n "${{ inputs.rows_per_batch }}" ]; then
+            START_ROW=$(( (${{ inputs.start_from_batch }} - 1) * ${{ inputs.rows_per_batch }} + 1 ))
+            if [ -n "${{ inputs.max_batches }}" ] && [ "${{ inputs.max_batches }}" != "0" ]; then
+              ROW_LIMIT=$(( ${{ inputs.rows_per_batch }} * ${{ inputs.max_batches }} ))
+            elif [ -z "$ROW_LIMIT" ]; then
+              ROW_LIMIT="${{ inputs.rows_per_batch }}"
+            fi
+          fi
+          args=(
+            --csv-file "private-data/${{ inputs.csv_file }}"
+            --workflow-type "${{ inputs.workflow_type }}"
+            --output work/items.json
+            --days-back "${{ inputs.days_back }}"
+            --skip-column "$SKIP_COLUMN"
+            --start-row "$START_ROW"
+            --query "${{ inputs.query }}"
+          )
+          if [ -n "$ROW_LIMIT" ]; then
+            args+=(--row-limit "$ROW_LIMIT")
+          fi
+          elt-brightdata build-items "${args[@]}"
+
+      - name: Run BrightData Dataset API
+        env:
+          BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
+        run: |
+          elt-brightdata run-dataset \
+            --dataset-id "${{ inputs.dataset_id }}" \
+            --items-file work/items.json \
+            --output work/brightdata-result.json \
+            --max-wait-minutes 90
+
+      - name: Prepare raw ingest payload
+        id: payload
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          payload = json.loads(Path("work/brightdata-result.json").read_text(encoding="utf-8"))
+          encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+          print("payload_json<<EOF")
+          print(encoded)
+          print("EOF")
+          PY
+
+      - name: Upload extract artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: brightdata-extract-${{ github.run_id }}
+          path: work/
+          if-no-files-found: error
+          retention-days: 14
+
+  raw-ingest:
+    needs: extract
+    uses: ./.github/workflows/raw-elt-ingest.yml
+    with:
+      dataset_kind: ${{ needs.extract.outputs.dataset_kind }}
+      payload_json: ${{ needs.extract.outputs.payload_json }}
+      source_run_id: brightdata-${{ github.run_id }}
+      gcs_bucket: ${{ vars.ELT_RAW_GCS_BUCKET || '' }}
+      bigquery_project_id: ${{ vars.ELT_BIGQUERY_PROJECT_ID || '' }}
+      bigquery_dataset: ${{ vars.ELT_BIGQUERY_DATASET || '' }}
