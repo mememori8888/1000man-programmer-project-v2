@@ -119,6 +119,16 @@ on:
         required: true
       GCP_SERVICE_ACCOUNT_JSON:
         required: false
+    outputs:
+      target_count:
+        description: Number of SERP targets prepared for this batch
+        value: ${{ jobs.prepare.outputs.target_count }}
+      effective_start_row:
+        description: Effective 1-based CSV start row
+        value: ${{ jobs.prepare.outputs.effective_start_row }}
+      effective_row_limit:
+        description: Effective target row limit
+        value: ${{ jobs.prepare.outputs.effective_row_limit }}
 
 permissions:
   contents: read
@@ -133,6 +143,7 @@ jobs:
       max_parallel: ${{ steps.limits.outputs.max_parallel }}
       effective_start_row: ${{ steps.limits.outputs.effective_start_row }}
       effective_row_limit: ${{ steps.limits.outputs.effective_row_limit }}
+      target_count: ${{ steps.matrix.outputs.target_count }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -230,6 +241,13 @@ jobs:
             elt-brightdata "${args[@]}"
           fi
           {
+            python - <<'PY'
+            import json
+            from pathlib import Path
+
+            matrix = json.loads(Path("work/serp-matrix.json").read_text(encoding="utf-8"))
+            print(f"target_count={len(matrix.get('include', []))}")
+            PY
             echo "matrix<<EOF"
             cat work/serp-matrix.json
             echo "EOF"

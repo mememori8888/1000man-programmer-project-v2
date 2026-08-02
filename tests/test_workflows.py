@@ -103,6 +103,8 @@ def test_serp_relevance_batch_workflow_builds_matrix_and_stores_raw_responses():
     assert "effective_start_row" in workflow_text
     assert "target_source" in workflow_text
     assert "bigquery_recent_reviews" in workflow_text
+    assert "target_count:" in workflow_text
+    assert "target_count={len(matrix.get('include', []))}" in workflow_text
     assert "build-serp-targets" in workflow_text
     assert "elt-bigquery run-all-sql" in workflow_text
     assert "finalize:" in workflow_text
@@ -131,8 +133,12 @@ def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract(
     assert "needs: [parse, extract]" in workflow_text
     assert "EXTRACT_GCS_URI" in workflow_text
     assert "EXTRACT_MANIFEST_URI" in workflow_text
+    assert "SERP_TARGET_COUNT" in workflow_text
+    assert "SERP_EFFECTIVE_ROW_LIMIT" in workflow_text
     assert "raw payload" in workflow_text
     assert "raw manifest" in workflow_text
+    assert "SERP targets" in workflow_text
+    assert "SERP row limit" in workflow_text
     assert "workflow_type == 'reviews_recent_relevance'" in workflow_text
     assert "target_source: bigquery_recent_reviews" in workflow_text
     assert "params.relevance_rank_limit" in workflow_text

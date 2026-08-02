@@ -246,6 +246,8 @@ jobs:
           EXTRACT_GCS_URI: ${{ needs.extract.outputs.gcs_uri }}
           EXTRACT_MANIFEST_URI: ${{ needs.extract.outputs.manifest_uri }}
           SERP_RESULT: ${{ needs.serp_relevance.result }}
+          SERP_TARGET_COUNT: ${{ needs.serp_relevance.outputs.target_count }}
+          SERP_EFFECTIVE_ROW_LIMIT: ${{ needs.serp_relevance.outputs.effective_row_limit }}
           EXPORT_REVIEWS_RESULT: ${{ needs.export_reviews.result }}
           EXPORT_RELEVANCE_RESULT: ${{ needs.export_relevance.result }}
           EXPORT_REVIEWS_DESTINATION_URI: ${{ needs.export_reviews.outputs.destination_uri }}
@@ -261,6 +263,8 @@ jobs:
             const extractGcsUri = process.env.EXTRACT_GCS_URI || '';
             const extractManifestUri = process.env.EXTRACT_MANIFEST_URI || '';
             const serpResult = process.env.SERP_RESULT || 'skipped';
+            const serpTargetCount = process.env.SERP_TARGET_COUNT || '';
+            const serpEffectiveRowLimit = process.env.SERP_EFFECTIVE_ROW_LIMIT || '';
             const exportReviewsResult = process.env.EXPORT_REVIEWS_RESULT || 'skipped';
             const exportRelevanceResult = process.env.EXPORT_RELEVANCE_RESULT || 'skipped';
             const exportReviewsDestinationUri = process.env.EXPORT_REVIEWS_DESTINATION_URI || '';
@@ -284,6 +288,8 @@ jobs:
             const exportLines = [
               extractGcsUri && `- raw payload: \`${extractGcsUri}\``,
               extractManifestUri && `- raw manifest: \`${extractManifestUri}\``,
+              serpTargetCount && `- SERP targets: \`${serpTargetCount}\``,
+              serpEffectiveRowLimit && `- SERP row limit: \`${serpEffectiveRowLimit}\``,
               exportReviewsDestinationUri && `- fact/dimension CSV: \`${exportReviewsDestinationUri}\``,
               exportRelevanceDestinationUri && `- relevance CSV: \`${exportRelevanceDestinationUri}\``,
             ].filter(Boolean);
