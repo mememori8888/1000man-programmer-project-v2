@@ -26,6 +26,10 @@ function fieldValue(id) {
   return document.getElementById(id).value.trim();
 }
 
+function csvPathOrDefault(id, fallback) {
+  return fieldValue(id) || fallback;
+}
+
 function hasPurpose(entry, purpose) {
   return Array.isArray(entry.purposes) && entry.purposes.includes(purpose);
 }
@@ -103,8 +107,8 @@ function buildParams() {
 
   const params = {
     workflow: selected,
-    csv_file: fieldValue("csvFile"),
-    output_file: fieldValue("outputFile"),
+    csv_file: csvPathOrDefault("csvFile", "results/dental_new.csv"),
+    output_file: csvPathOrDefault("outputFile", "results/dental_reviews.csv"),
     days_back: fieldValue("daysBack"),
     start_from_batch: "1",
     rows_per_batch: fieldValue("rowsPerBatch"),
@@ -128,12 +132,12 @@ function buildParams() {
     return {
       workflow: selected,
       config_file: "settings/settings.json",
-      fid_file: fieldValue("fidFile"),
+      fid_file: csvPathOrDefault("fidFile", "results/fid.csv"),
       start_line: fieldValue("startLine"),
       process_count: fieldValue("processCount"),
       workers: fieldValue("workers"),
       custom_settings: {
-        review_file: fieldValue("outputFile"),
+        review_file: csvPathOrDefault("outputFile", "results/dental_reviews.csv"),
       },
     };
   }

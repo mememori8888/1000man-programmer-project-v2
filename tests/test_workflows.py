@@ -264,7 +264,11 @@ def test_webapp_uses_curated_public_file_presets():
     assert 'id="processCount"' in index_text
     assert 'id="workers"' in index_text
     assert "params.fid_file" not in app_text
-    assert 'fid_file: fieldValue("fidFile")' in app_text
+    assert "csvPathOrDefault" in app_text
+    assert 'csvPathOrDefault("csvFile", "results/dental_new.csv")' in app_text
+    assert 'csvPathOrDefault("outputFile", "results/dental_reviews.csv")' in app_text
+    assert 'csvPathOrDefault("fidFile", "results/fid.csv")' in app_text
+    assert 'fid_file: csvPathOrDefault("fidFile", "results/fid.csv")' in app_text
     assert 'start_line: fieldValue("startLine")' in app_text
     assert 'process_count: fieldValue("processCount")' in app_text
     assert 'workers: fieldValue("workers")' in app_text
