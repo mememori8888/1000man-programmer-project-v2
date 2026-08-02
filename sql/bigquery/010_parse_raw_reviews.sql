@@ -45,7 +45,12 @@ normalized as (
     coalesce(
       nullif(json_value(review_json, '$.facility_id'), ''),
       nullif(json_value(review_json, '$.place_id'), ''),
+      nullif(json_value(review_json, '$.fid'), ''),
+      nullif(json_value(review_json, '$.gid'), ''),
       nullif(json_value(review_json, '$.input.facility_id'), ''),
+      nullif(json_value(review_json, '$.input.place_id'), ''),
+      nullif(json_value(review_json, '$.input.fid'), ''),
+      nullif(json_value(review_json, '$.input.gid'), ''),
       nullif(json_value(review_json, '$.input.url'), ''),
       nullif(json_value(review_json, '$.url'), '')
     ) as facility_id,

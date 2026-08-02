@@ -34,3 +34,12 @@ def test_bigquery_transform_workflow_exposes_registered_sql_files():
 
     assert all_options == ["all"]
     assert options == TRANSFORM_SQL_FILES
+
+
+def test_review_parser_keeps_input_facility_keys():
+    sql = Path("sql/bigquery/010_parse_raw_reviews.sql").read_text(encoding="utf-8")
+
+    assert "$.input.facility_id" in sql
+    assert "$.input.fid" in sql
+    assert "$.input.gid" in sql
+    assert "$.fid" in sql

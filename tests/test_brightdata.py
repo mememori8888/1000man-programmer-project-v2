@@ -59,7 +59,7 @@ def test_builds_review_dataset_items_from_csv(tmp_path: Path):
         skip_column="web",
     )
 
-    assert items == [{"url": "https://maps.example/place/1", "days_limit": 30}]
+    assert items == [{"url": "https://maps.example/place/1", "days_limit": 30, "facility_id": "f1"}]
 
 
 def test_builds_legacy_reviews_items_from_fid_csv(tmp_path: Path):
@@ -81,6 +81,8 @@ def test_builds_legacy_reviews_items_from_fid_csv(tmp_path: Path):
         {
             "url": "https://www.google.com/reviews?fid=0x123abc:0x456def&sort=qualityScore&hl=ja&brd_json=1",
             "days_limit": 10,
+            "facility_id": "1",
+            "fid": "0x123abc:0x456def",
         }
     ]
 

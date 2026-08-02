@@ -168,12 +168,18 @@ def build_dataset_items_from_csv(
 
         if workflow_type in {"reviews", "reviews_sequential", "reviews_recent_relevance"}:
             url = _first_present(row, ["GoogleMap", "google_map_url", "google_map", "web", "url"])
+            facility_id = _first_present(row, ["facility_id", "place_id", "施設ID", "id", "gid", "施設GID"])
+            fid = _first_present(row, FID_COLUMNS) or _detect_fid_value(row)
             if not url and workflow_type == "reviews":
-                fid = _first_present(row, FID_COLUMNS) or _detect_fid_value(row)
                 if fid:
                     url = f"https://www.google.com/reviews?fid={fid}&sort=qualityScore&hl=ja&brd_json=1"
             if url:
-                items.append({"url": url, "days_limit": days_back})
+                item: dict[str, Any] = {"url": url, "days_limit": days_back}
+                if facility_id:
+                    item["facility_id"] = facility_id
+                if fid:
+                    item["fid"] = fid
+                items.append(item)
             continue
 
         if workflow_type == "facility":
