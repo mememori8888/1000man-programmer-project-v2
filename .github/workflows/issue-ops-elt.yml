@@ -252,6 +252,7 @@ jobs:
           EXPORT_RELEVANCE_RESULT: ${{ needs.export_relevance.result }}
           EXPORT_REVIEWS_DESTINATION_URI: ${{ needs.export_reviews.outputs.destination_uri }}
           EXPORT_RELEVANCE_DESTINATION_URI: ${{ needs.export_relevance.outputs.destination_uri }}
+          WORKFLOW_TYPE: ${{ needs.parse.outputs.workflow_type }}
           CONFIG_RESULT: ${{ needs.config.result }}
           CONFIG_VALID: ${{ needs.config.outputs.valid }}
           CONFIG_ERRORS: ${{ needs.config.outputs.errors }}
@@ -269,6 +270,8 @@ jobs:
             const exportRelevanceResult = process.env.EXPORT_RELEVANCE_RESULT || 'skipped';
             const exportReviewsDestinationUri = process.env.EXPORT_REVIEWS_DESTINATION_URI || '';
             const exportRelevanceDestinationUri = process.env.EXPORT_RELEVANCE_DESTINATION_URI || '';
+            const primaryExportName = process.env.WORKFLOW_TYPE === 'facility' ? 'dim_facilities export' : 'fact_reviews export';
+            const primaryExportOutputName = process.env.WORKFLOW_TYPE === 'facility' ? 'dim_facilities CSV' : 'fact_reviews CSV';
             const configResult = process.env.CONFIG_RESULT || 'skipped';
             const configValid = process.env.CONFIG_VALID === 'true';
             const configErrors = process.env.CONFIG_ERRORS || '';
@@ -278,7 +281,7 @@ jobs:
             const activeResults = [
               ['BrightData extract', extractResult],
               ['SERP relevance', serpResult],
-              ['fact_reviews export', exportReviewsResult],
+              [primaryExportName, exportReviewsResult],
               ['relevance ranks export', exportRelevanceResult],
             ].filter(([, result]) => result && result !== 'skipped');
             const hasFailure = activeResults.some(([, result]) => ['failure', 'cancelled', 'timed_out'].includes(result));
@@ -290,7 +293,7 @@ jobs:
               extractManifestUri && `- raw manifest: \`${extractManifestUri}\``,
               serpTargetCount && `- SERP targets: \`${serpTargetCount}\``,
               serpEffectiveRowLimit && `- SERP row limit: \`${serpEffectiveRowLimit}\``,
-              exportReviewsDestinationUri && `- fact/dimension CSV: \`${exportReviewsDestinationUri}\``,
+              exportReviewsDestinationUri && `- ${primaryExportOutputName}: \`${exportReviewsDestinationUri}\``,
               exportRelevanceDestinationUri && `- relevance CSV: \`${exportRelevanceDestinationUri}\``,
             ].filter(Boolean);
 

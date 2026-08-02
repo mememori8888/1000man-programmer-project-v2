@@ -65,6 +65,10 @@ function validateCurrentForm() {
     checks.push(validateCsvField("outputFile", "results/dental_reviews.csv"));
   }
 
+  if (selected === "facility") {
+    checks.push(validateCsvField("outputFile", "results/dental_new.csv"));
+  }
+
   if (selected === "reviews_sequential" || selected === "reviews_recent_relevance") {
     checks.push(validateCsvField("csvFile", "results/dental_new.csv"));
     checks.push(validateCsvField("outputFile", "results/dental_reviews.csv"));
@@ -145,6 +149,7 @@ function buildParams() {
     return {
       workflow: selected,
       csv_file: "settings/address.csv",
+      output_file: csvPathOrDefault("outputFile", "results/dental_new.csv"),
       custom_settings: {
         query: "歯科医院",
         address_csv_path: "settings/address.csv",

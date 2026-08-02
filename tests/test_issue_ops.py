@@ -62,6 +62,18 @@ def test_validates_nested_custom_settings_paths():
     assert "address_csv_path must be a safe CSV path under settings/ or results/" in errors
 
 
+def test_validates_facility_output_path():
+    body = """/run-facility
+
+```json
+{"csv_file":"settings/address.csv","output_file":"/tmp/facilities.csv"}
+```
+"""
+    errors = validate_issue_request(parse_issue_request(body))
+
+    assert "output_file must be a safe CSV path under settings/ or results/" in errors
+
+
 def test_rejects_non_object_custom_settings():
     body = """/run-reviews
 

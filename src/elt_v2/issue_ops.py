@@ -103,6 +103,7 @@ def validate_issue_request(request: IssueRequest) -> list[str]:
 
     if request.workflow_type == "facility":
         _validate_private_csv_param(params, "csv_file", errors)
+        _validate_private_csv_param(params, "output_file", errors)
         if isinstance(custom_settings, dict):
             _validate_private_csv_param(custom_settings, "address_csv_path", errors)
 

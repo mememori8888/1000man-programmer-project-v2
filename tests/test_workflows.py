@@ -157,8 +157,12 @@ def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract(
     assert "params.output_file" in workflow_text
     assert "params.summary_file" in workflow_text
     assert "dim_facilities" in workflow_text
+    assert "WORKFLOW_TYPE" in workflow_text
+    assert "dim_facilities export" in workflow_text
+    assert "dim_facilities CSV" in workflow_text
     assert "ELT_EXPORT_GCS_BUCKET" in workflow_text
     assert "fact_reviews export" in workflow_text
+    assert "fact_reviews CSV" in workflow_text
     assert "relevance ranks export" in workflow_text
     assert "EXPORT_REVIEWS_DESTINATION_URI" in workflow_text
     assert "EXPORT_RELEVANCE_DESTINATION_URI" in workflow_text
@@ -269,6 +273,8 @@ def test_webapp_uses_curated_public_file_presets():
     assert "validateCurrentForm" in app_text
     assert "setCustomValidity" in app_text
     assert "Use a .csv path under settings/ or results/." in app_text
+    assert 'selected === "facility"' in app_text
+    assert 'output_file: csvPathOrDefault("outputFile", "results/dental_new.csv")' in app_text
     assert 'csvPathOrDefault("csvFile", "results/dental_new.csv")' in app_text
     assert 'csvPathOrDefault("outputFile", "results/dental_reviews.csv")' in app_text
     assert 'csvPathOrDefault("fidFile", "results/fid.csv")' in app_text
