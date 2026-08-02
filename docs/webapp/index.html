@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://github.com;">
+    <title>1000man Programmer v2 Job Manager</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="toolbar">
+        <div>
+          <h1>1000man Programmer v2</h1>
+          <p>demo の IssueOps 体験を保ったまま、GCS + BigQuery ELT へ移行するジョブ作成画面です。</p>
+        </div>
+        <a class="icon-link" href="https://github.com/mememori8888/1000man-programmer-project-v2/actions">Actions</a>
+      </section>
+
+      <section class="workspace">
+        <form id="jobForm" class="panel">
+          <label>
+            Workflow
+            <select id="workflow" required>
+              <option value="facility">施設データ取得</option>
+              <option value="reviews">レビュー取得</option>
+              <option value="reviews_sequential">レビュー取得・新仕様逐次実行</option>
+              <option value="reviews_recent_relevance">レビュー取得・30日関連度ランク付き</option>
+            </select>
+          </label>
+
+          <label>
+            入力 CSV
+            <input id="csvFile" value="results/dental_new.csv">
+          </label>
+
+          <label>
+            出力 CSV
+            <input id="outputFile" value="results/dental_reviews.csv">
+          </label>
+
+          <div class="grid">
+            <label>
+              days_back
+              <input id="daysBack" type="number" min="1" value="30">
+            </label>
+            <label>
+              rows_per_batch
+              <input id="rowsPerBatch" type="number" min="1" value="500">
+            </label>
+            <label>
+              max_parallel_jobs
+              <input id="maxParallelJobs" type="number" min="1" max="3" value="3">
+            </label>
+            <label>
+              api_batch_size
+              <input id="apiBatchSize" type="number" min="1" value="50">
+            </label>
+          </div>
+
+          <label>
+            dataset_id
+            <input id="datasetId" value="gd_luzfs1dn2oa0teb81">
+          </label>
+
+          <label>
+            skip_column
+            <input id="skipColumn" value="web">
+          </label>
+
+          <div class="grid relevance-fields">
+            <label>
+              relevance_rank_limit
+              <input id="relevanceRankLimit" type="number" min="1" value="10">
+            </label>
+            <label>
+              serp_max_workers
+              <input id="serpMaxWorkers" type="number" min="1" max="3" value="3">
+            </label>
+            <label>
+              serp_zone_name
+              <input id="serpZoneName" value="serp_api2">
+            </label>
+            <label>
+              summary_file
+              <input id="summaryFile" value="results/relevance_rank_summary.csv">
+            </label>
+          </div>
+
+          <div class="actions">
+            <button type="submit">Issue を作成</button>
+            <button type="button" id="copyButton">本文をコピー</button>
+          </div>
+        </form>
+
+        <section class="panel preview-panel">
+          <h2>Issue preview</h2>
+          <pre id="preview"></pre>
+        </section>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

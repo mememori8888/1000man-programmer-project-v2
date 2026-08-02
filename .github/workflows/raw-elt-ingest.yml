@@ -1,0 +1,104 @@
+name: Raw ELT ingest
+
+on:
+  workflow_dispatch:
+    inputs:
+      dataset_kind:
+        description: Raw dataset kind
+        required: true
+        type: choice
+        options:
+          - reviews
+          - facilities
+      payload_json:
+        description: Raw request or BrightData payload JSON
+        required: true
+      source_run_id:
+        description: Source run id
+        required: false
+        default: manual
+      gcs_bucket:
+        description: Optional GCS bucket for raw upload
+        required: false
+        default: ""
+  workflow_call:
+    inputs:
+      dataset_kind:
+        required: true
+        type: string
+      payload_json:
+        required: true
+        type: string
+      source_run_id:
+        required: true
+        type: string
+      gcs_bucket:
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          if [ -n "${{ inputs.gcs_bucket }}" ]; then
+            pip install ".[gcp]"
+          else
+            pip install -e .
+          fi
+
+      - name: Write payload file
+        env:
+          PAYLOAD_JSON: ${{ inputs.payload_json }}
+        run: |
+          mkdir -p work/raw-input
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = json.loads(os.environ["PAYLOAD_JSON"])
+          Path("work/raw-input/payload.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Store raw object locally
+        run: |
+          elt-raw-write \
+            --input work/raw-input/payload.json \
+            --source-run-id "${{ inputs.source_run_id }}" \
+            --dataset-kind "${{ inputs.dataset_kind }}" \
+            --local-output-root work/raw-output
+
+      - name: Upload raw object to GCS
+        if: inputs.gcs_bucket != ''
+        run: |
+          elt-raw-write \
+            --input work/raw-input/payload.json \
+            --source-run-id "${{ inputs.source_run_id }}" \
+            --dataset-kind "${{ inputs.dataset_kind }}" \
+            --gcs-bucket "${{ inputs.gcs_bucket }}"
+
+      - name: Upload raw artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-elt-${{ inputs.dataset_kind }}-${{ github.run_id }}
+          path: work/raw-output
+          if-no-files-found: error
+          retention-days: 14
