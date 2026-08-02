@@ -230,14 +230,19 @@ jobs:
             --output work/brightdata-result.json \
             --max-wait-minutes 90
 
-      - name: Store raw object locally
+      - name: Store raw object locally and optionally upload to GCS
         id: local
         run: |
-          elt-raw-write \
-            --input work/brightdata-result.json \
-            --source-run-id "brightdata-${{ github.run_id }}" \
-            --dataset-kind "${{ steps.kind.outputs.dataset_kind }}" \
-            --local-output-root work/raw-output | tee work/raw-write-result.json
+          args=(
+            --input work/brightdata-result.json
+            --source-run-id "brightdata-${{ github.run_id }}"
+            --dataset-kind "${{ steps.kind.outputs.dataset_kind }}"
+            --local-output-root work/raw-output
+          )
+          if [ -n "${{ vars.ELT_RAW_GCS_BUCKET }}" ]; then
+            args+=(--gcs-bucket "${{ vars.ELT_RAW_GCS_BUCKET }}")
+          fi
+          elt-raw-write "${args[@]}" | tee work/raw-write-result.json
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           from pathlib import Path
@@ -248,16 +253,9 @@ jobs:
           print(f"object_name={manifest['object_name']}")
           print(f"manifest_path={local_path}.manifest.json")
           print(f"local_path={local_path}")
+          if result.get("gcs_uri"):
+              print(f"gcs_uri={result['gcs_uri']}")
           PY
-
-      - name: Upload raw object to GCS
-        if: vars.ELT_RAW_GCS_BUCKET != ''
-        run: |
-          elt-raw-write \
-            --input work/brightdata-result.json \
-            --source-run-id "brightdata-${{ github.run_id }}" \
-            --dataset-kind "${{ steps.kind.outputs.dataset_kind }}" \
-            --gcs-bucket "${{ vars.ELT_RAW_GCS_BUCKET }}"
 
       - name: Ensure BigQuery raw tables
         if: vars.ELT_RAW_GCS_BUCKET != '' && vars.ELT_BIGQUERY_PROJECT_ID != '' && vars.ELT_BIGQUERY_DATASET != ''
@@ -307,7 +305,7 @@ jobs:
             echo "- local raw object: \`${{ steps.local.outputs.local_path }}\`"
             echo "- manifest: \`${{ steps.local.outputs.manifest_path }}\`"
             if [ -n "${{ vars.ELT_RAW_GCS_BUCKET }}" ]; then
-              echo "- GCS raw object: \`gs://${{ vars.ELT_RAW_GCS_BUCKET }}/${{ steps.local.outputs.object_name }}\`"
+              echo "- GCS raw object: \`${{ steps.local.outputs.gcs_uri }}\`"
             fi
             if [ -n "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" ] && [ -n "${{ vars.ELT_BIGQUERY_DATASET }}" ]; then
               echo "- BigQuery raw dataset: \`${{ vars.ELT_BIGQUERY_PROJECT_ID }}.${{ vars.ELT_BIGQUERY_DATASET }}\`"
