@@ -96,6 +96,18 @@ def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract(
     assert "target_source: bigquery_recent_reviews" in workflow_text
 
 
+def test_issue_ops_report_distinguishes_success_failure_and_links_run():
+    workflow_text = Path(".github/workflows/issue-ops-elt.yml").read_text(encoding="utf-8")
+
+    assert "v2 ELT execution completed" in workflow_text
+    assert "v2 ELT execution failed" in workflow_text
+    assert "v2 ELT configuration check failed" in workflow_text
+    assert "BrightData入力CSV検証" in workflow_text
+    assert "context.runId" in workflow_text
+    assert "VALIDATION_ERRORS" in workflow_text
+    assert "process.env.CONFIG_ERRORS" in workflow_text
+
+
 def test_raw_object_replay_workflow_uses_gcs_raw_replay_cli():
     workflow_text = Path(".github/workflows/raw-object-replay.yml").read_text(encoding="utf-8")
 

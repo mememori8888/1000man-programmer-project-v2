@@ -81,16 +81,20 @@ jobs:
       - name: Comment preview
         if: steps.gate.outputs.should_run == 'preview'
         uses: actions/github-script@v7
+        env:
+          WORKFLOW_TYPE: ${{ steps.parse.outputs.workflow_type }}
+          DATASET_KIND: ${{ steps.parse.outputs.dataset_kind }}
+          VALIDATION_ERRORS: ${{ steps.parse.outputs.validation_errors }}
         with:
           script: |
             const valid = '${{ steps.parse.outputs.valid }}' === 'true';
-            const errors = `${{ steps.parse.outputs.validation_errors }}`;
+            const errors = process.env.VALIDATION_ERRORS || '';
             const body = valid
               ? [
                   '## v2 ELT job accepted',
                   '',
-                  `- workflow: \`${{ steps.parse.outputs.workflow_type }}\``,
-                  `- raw dataset: \`${{ steps.parse.outputs.dataset_kind }}\``,
+                  `- workflow: \`${process.env.WORKFLOW_TYPE}\``,
+                  `- raw dataset: \`${process.env.DATASET_KIND}\``,
                   '',
                   '管理者が `/承認` とコメントすると raw ELT ingest を開始します。'
                 ].join('\n')
@@ -220,24 +224,76 @@ jobs:
     steps:
       - name: Report result
         uses: actions/github-script@v7
+        env:
+          RAW_RESULT: ${{ needs.ingest.result }}
+          EXTRACT_RESULT: ${{ needs.extract.result }}
+          SERP_RESULT: ${{ needs.serp_relevance.result }}
+          CONFIG_RESULT: ${{ needs.config.result }}
+          CONFIG_VALID: ${{ needs.config.outputs.valid }}
+          CONFIG_ERRORS: ${{ needs.config.outputs.errors }}
+          PARSE_VALID: ${{ needs.parse.outputs.valid }}
+          VALIDATION_ERRORS: ${{ needs.parse.outputs.validation_errors }}
         with:
           script: |
-            const rawResult = '${{ needs.ingest.result }}';
-            const extractResult = '${{ needs.extract.result }}';
-            const serpResult = '${{ needs.serp_relevance.result }}';
-            const configResult = '${{ needs.config.result }}';
-            const configValid = '${{ needs.config.outputs.valid }}' === 'true';
-            const configErrors = `${{ needs.config.outputs.errors }}`;
-            const result = serpResult && serpResult !== 'skipped'
-              ? `dataset=${extractResult}, serp=${serpResult}`
-              : (extractResult && extractResult !== 'skipped' ? extractResult : rawResult);
-            const valid = '${{ needs.parse.outputs.valid }}' === 'true';
-            const errors = `${{ needs.parse.outputs.validation_errors }}`;
-            const body = valid && configValid
-              ? `v2 ELT result: \`${result}\`\n\nBrightData extract、SERP relevance、または raw ingest の artifact に raw object と manifest が保存されています。`
-              : (!configValid && configResult !== 'skipped'
-                ? `v2 ELT configuration check failed:\n\n\`\`\`\n${configErrors || 'Unknown configuration error'}\n\`\`\``
-                : `v2 ELT validation failed:\n\n\`\`\`\n${errors || 'Unknown validation error'}\n\`\`\``);
+            const rawResult = process.env.RAW_RESULT || 'skipped';
+            const extractResult = process.env.EXTRACT_RESULT || 'skipped';
+            const serpResult = process.env.SERP_RESULT || 'skipped';
+            const configResult = process.env.CONFIG_RESULT || 'skipped';
+            const configValid = process.env.CONFIG_VALID === 'true';
+            const configErrors = process.env.CONFIG_ERRORS || '';
+            const valid = process.env.PARSE_VALID === 'true';
+            const errors = process.env.VALIDATION_ERRORS || '';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const activeResults = [
+              ['raw ingest', rawResult],
+              ['BrightData extract', extractResult],
+              ['SERP relevance', serpResult],
+            ].filter(([, result]) => result && result !== 'skipped');
+            const hasFailure = activeResults.some(([, result]) => ['failure', 'cancelled', 'timed_out'].includes(result));
+            const resultLines = activeResults.length
+              ? activeResults.map(([name, result]) => `- ${name}: \`${result}\``)
+              : ['- no execution job was started'];
+
+            let body;
+            if (!valid) {
+              body = [
+                '## v2 ELT validation failed',
+                '',
+                '```',
+                errors || 'Unknown validation error',
+                '```',
+                '',
+                `[Actions run](${runUrl})`,
+              ].join('\n');
+            } else if (!configValid && configResult !== 'skipped') {
+              body = [
+                '## v2 ELT configuration check failed',
+                '',
+                '```',
+                configErrors || 'Unknown configuration error',
+                '```',
+                '',
+                `[Actions run](${runUrl})`,
+              ].join('\n');
+            } else if (hasFailure) {
+              body = [
+                '## v2 ELT execution failed',
+                '',
+                ...resultLines,
+                '',
+                'BrightData入力CSV検証、抽出、GCS/BigQuery投入、またはSERP関連度処理のいずれかで停止しました。',
+                `[Actions run](${runUrl})`,
+              ].join('\n');
+            } else {
+              body = [
+                '## v2 ELT execution completed',
+                '',
+                ...resultLines,
+                '',
+                'artifact と workflow summary に raw object、manifest、GCS/BigQuery の結果が保存されています。',
+                `[Actions run](${runUrl})`,
+              ].join('\n');
+            }
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
