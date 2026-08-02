@@ -1,24 +1,222 @@
 # 1000man Programmer Project v2
 
-This repository is the new version of the 10 million yen programmer project.
+このリポジトリは、`mememori8888/demo` の機能を損なわずに、1000万円超えを狙えるプログラマーの実践テーマとして再設計する新バージョンです。
 
-The project focuses on the practical skills that turn ordinary working code into business-grade systems:
+既存 demo の `WebApp -> Issue -> GitHub Actions -> データ出力` の運用は保持します。そのうえで、Python が巨大 CSV を抱えて照合・重複排除する構成から、`Google Cloud Storage + BigQuery` を中心にしたモダン ELT へ移行します。
 
-- faster processing
-- lower cloud and API cost
-- safer failure handling
-- larger scale
-- clearer architecture
-- maintainable production workflows
+## マインドセット
 
-## Concept
+「動く」だけのコードは、データ量や会員数が増えた瞬間にコストと処理時間を爆発させます。このプロジェクトでは、動くコードを維持するだけでなく、スケールしても安く、速く、正しく動く設計へ移すことを目的にします。
 
-High-income programmers are not valuable only because they know many frameworks. They are valuable because they can take existing systems and make them handle 10x, 100x, or 10,000x more load while reducing cost and operational risk.
+| 層 | 典型的な対応 | 結果 |
+| --- | --- | --- |
+| 年収600万層 | クラウドの CPU やメモリを大きくして力技で動かす | コストが赤字化し、成長に耐えられない |
+| 年収1000万層・コード特化 | 計算量、非同期、並列化、I/O 削減でコードを改善する | コストを 1/10 から 1/100 にできる |
+| 年収1000万超え層・全体設計 | そもそも Python で計算すべきでない処理を DWH に移す | 数千万から数十億件を見通せる構成になる |
 
-This project treats that as a trainable skill.
+今回は 3 つ目の「アーキテクチャ刷新」を行います。コードの凄さだけではなく、全体の作りがきれいで、抜け漏れが起きにくく、ビジネス要件の変化に耐える構成を目指します。
+
+## 保持する demo 機能
+
+既存 `mememori8888/demo` の利用体験は段階移行します。動作確認が終わるまで、既存機能を削除したり壊したりしません。
+
+- `docs/webapp` からジョブ種別とパラメータを選ぶ。
+- GitHub Issue に実行リクエストを作る。
+- 管理者が `/承認` をコメントして実行を開始する。
+- GitHub Actions が BrightData 取得ジョブを実行する。
+- 出力データを `mememori8888/googlemap` の `settings/` と `results/` に保存する。
+- 実行ログ、artifact、Issue コメントで進捗と結果を確認する。
+
+保持する Issue コマンドは次の通りです。
+
+- `/run-facility`
+- `/run-reviews`
+- `/run-reviews-sequential`
+- `/run-reviews-relevance`
+- `/承認`
+
+必要な GitHub Secrets は次の通りです。
+
+- `BRIGHTDATA_API_TOKEN`
+- `PRIVATE_REPO_PAT`
+- `BRIGHTDATA_ZONE_NAME` optional, default `serp_api2`
+
+## 新アーキテクチャ
+
+標準構成は `Google Cloud Storage + BigQuery` に固定します。
+
+- Extract: Python は BrightData からデータを取得し、加工せず raw JSON/CSV として GCS に書き捨てる。
+- Load: GCS に置かれた raw データを BigQuery の raw table に自動ロードする。
+- Transform: BigQuery SQL または dbt で照合、重複排除、正規化、集計を行う。
+- Orchestration: GitHub Actions の手動実行、IssueOps、承認フローは当面維持する。
+
+Python の役割を「取得して保存するだけ」に絞ることで、メモリ枯渇、巨大 CSV の逐次照合、Python ループによる処理時間爆発を避けます。重い計算は BigQuery の超並列処理に任せます。
+
+```mermaid
+flowchart LR
+    WebApp["docs/webapp"] --> Issue["GitHub Issue"]
+    Issue --> Approval["/承認"]
+    Approval --> Actions["GitHub Actions"]
+    Actions --> BrightData["BrightData APIs"]
+    BrightData --> Extractor["Python Extractor"]
+    Extractor --> GCS["Google Cloud Storage raw zone"]
+    GCS --> BQRaw["BigQuery raw tables"]
+    BQRaw --> DBT["BigQuery SQL / dbt"]
+    DBT --> BQMart["BigQuery mart tables"]
+    BQMart --> Outputs["CSV export / dashboard / downstream jobs"]
+```
+
+## データフロー
+
+```mermaid
+flowchart TD
+    A["Job request from WebApp"] --> B["IssueOps validates command and params"]
+    B --> C["GitHub Actions starts extractor"]
+    C --> D["BrightData returns facility or review data"]
+    D --> E["Write raw JSON/CSV to GCS with source_run_id"]
+    E --> F["Load raw object into BigQuery raw_reviews"]
+    F --> G["Transform with SQL/dbt"]
+    G --> H["Deduplicate with ROW_NUMBER()"]
+    H --> I["Update dim_facilities and fact_reviews"]
+    I --> J["Export or query clean data"]
+```
+
+## シーケンス
+
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant WebApp as WebApp
+    participant Issue as GitHub Issue
+    participant Actions as GitHub Actions
+    participant BrightData as BrightData
+    participant GCS as GCS
+    participant BigQuery as BigQuery
+    participant DBT as SQL/dbt
+
+    User->>WebApp: Select workflow and params
+    WebApp->>Issue: Create issue with /run-* command
+    User->>Issue: Comment /承認
+    Issue->>Actions: Trigger IssueOps workflow
+    Actions->>BrightData: Request facility or review data
+    BrightData-->>Actions: Return raw result
+    Actions->>GCS: Write raw JSON/CSV
+    GCS->>BigQuery: Load raw table
+    BigQuery->>DBT: Run transform job
+    DBT->>BigQuery: Build clean dimension and fact tables
+    Actions->>Issue: Comment result and links
+```
+
+## テーブル設計
+
+DWH 内は、施設ジャンルが増えても Python に泥臭い `if` 分岐を足さなくてよいように、分析に向いたスタースキーマで整理します。
+
+```mermaid
+erDiagram
+    dim_facilities ||--o{ fact_reviews : has
+    raw_reviews }o--|| dim_facilities : resolves_to
+
+    raw_reviews {
+        string source_run_id
+        string raw_object_uri
+        string raw_payload
+        string source_system
+        timestamp extracted_at
+        timestamp loaded_at
+    }
+
+    dim_facilities {
+        string facility_id
+        string facility_type
+        string facility_name
+        string address
+        string google_map_url
+        string fid
+        timestamp first_seen_at
+        timestamp updated_at
+    }
+
+    fact_reviews {
+        string review_id
+        string facility_id
+        int rating
+        string review_text
+        date review_date
+        timestamp extracted_at
+        timestamp loaded_at
+    }
+```
+
+| テーブル | 役割 | 主なデータ |
+| --- | --- | --- |
+| `raw_reviews` | Python が投げ込んだ未加工データ。重複あり | `source_run_id`, `raw_object_uri`, `raw_payload`, `extracted_at` |
+| `dim_facilities` | 施設の種類、名前、住所、FID を管理するマスタ | `facility_id`, `facility_type`, `facility_name`, `address`, `google_map_url`, `fid` |
+| `fact_reviews` | DWH で重複排除されたレビュー事実データ | `review_id`, `facility_id`, `rating`, `review_text`, `review_date`, `extracted_at` |
+
+重複排除は BigQuery の `ROW_NUMBER()` を使います。
+
+```sql
+select *
+from (
+  select
+    *,
+    row_number() over (
+      partition by facility_id, review_id
+      order by extracted_at desc
+    ) as row_num
+  from raw_reviews_parsed
+)
+where row_num = 1;
+```
+
+## 移行フェーズ
+
+1. README と `AGENTS.md` に v2 の設計方針を固定する。
+2. `demo` の WebApp、IssueOps、GitHub Actions、主要 Python を v2 に移植する。
+3. Python の保存先を CSV 直更新から GCS raw 書き込みへ変える。
+4. GCS から BigQuery raw table へのロード処理を追加する。
+5. BigQuery SQL/dbt で `dim_facilities` と `fact_reviews` を作る。
+6. 既存 CSV 出力が必要な利用者向けに、BigQuery から CSV export する互換口を用意する。
+7. 既存 demo と v2 の同一入力で差分検証し、機能を損なっていないことを確認する。
+8. 参照されていない旧ファイルだけを整理する。
+
+## 実装済みの最小境界
+
+現時点では、ELT 移行の最初の境界として raw payload を安全に保存する足場を実装しています。
+
+- `elt-raw-write`: BrightData から得た `.json` または `.csv` を未加工のまま raw object として保存する CLI。
+- `src/elt_v2/raw_writer.py`: raw object 名、SHA-256、manifest、ローカル保存、GCS upload 境界を管理する。
+- `sql/bigquery/`: BigQuery の raw table、mart table、レビュー重複排除 SQL。
+- `tests/`: raw object 生成と manifest 保存の単体テスト。
+
+ローカル検証例:
+
+```powershell
+$env:PYTHONPATH='src'
+python -m elt_v2.cli `
+  --input .\sample\reviews.csv `
+  --source-run-id gh-run-123 `
+  --dataset-kind reviews `
+  --local-output-root .\out
+```
+
+## 不要・整理候補
+
+以下は即削除ではありません。移行後に参照関係、実行実績、代替機能の有無を確認してから整理します。
+
+| 候補 | 判断 |
+| --- | --- |
+| `facility_BrightData_20_update.py` | 旧版または派生版の可能性あり。現行 workflow 参照を確認してから整理する |
+| `facility_BrightData_heatmap.py` | heatmap 専用用途が残っているか確認する |
+| `main.py`, `main_category.py` | 旧 Google Maps 系処理の可能性あり。現行 WebApp/Actions から未参照なら archive 候補 |
+| `reviews_brightData_new_version.py` | wrapper として残す必要があるか確認する |
+| `.github/workflows/dental_new_reviews_sequential.yml` | `reviews_local_interactive_sequential.yml` と役割重複の可能性あり |
+| 改善報告系 Markdown | `docs/archive/` へ移動候補 |
+| `n8n/` | GitHub Actions の代替ではなく、Windows ローカル関連度取得用の任意ツールとして分類する |
+| `faiility_brightdata_new_version.py` | typo だが workflow 参照中のため、即改名しない |
 
 ## Agent Instructions
 
-Development agents should follow [AGENTS.md](AGENTS.md).
+開発エージェントは [AGENTS.md](AGENTS.md) に従います。
 
-The short alias [agent.md](agent.md) is included for workflows that expect that filename.
+[agent.md](agent.md) は、`agent.md` というファイル名を期待するワークフロー向けの短い参照ファイルです。
