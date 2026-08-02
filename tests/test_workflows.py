@@ -35,6 +35,15 @@ def test_brightdata_extract_does_not_emit_raw_payload_as_job_output():
     assert "GITHUB_STEP_SUMMARY" in workflow_text
 
 
+def test_ci_runs_pytest_and_actionlint():
+    workflow_text = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert "python -m pytest" in workflow_text
+    assert "actions/setup-go@v5" in workflow_text
+    assert "go install github.com/rhysd/actionlint/cmd/actionlint@latest" in workflow_text
+    assert "run: actionlint" in workflow_text
+
+
 def test_bigquery_export_workflow_uses_gcs_csv_destination():
     workflow_text = Path(".github/workflows/bigquery-export.yml").read_text(encoding="utf-8")
 
