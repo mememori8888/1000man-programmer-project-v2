@@ -224,7 +224,7 @@ where row_num = 1;
   - GCS/BigQuery 設定が揃っている場合、raw load 後に `elt-bigquery run-all-sql` で標準Transformまで自動実行する。
 - `.github/workflows/serp-reviews-smoke.yml`: BrightData SERP API の URL/zone 疎通を診断する。
 - `.github/workflows/serp-relevance-extract.yml`: SERP API response を `serp_relevance` raw object として保存し、BigQuery raw table へ投入する。
-- `.github/workflows/serp-relevance-batch.yml`: private data repo の施設CSV、または BigQuery の直近 `fact_reviews` からSERP対象URLをmatrix化し、複数施設の関連度 raw response 保存と rank fact 更新を行う。
+- `.github/workflows/serp-relevance-batch.yml`: private data repo の施設CSV、または BigQuery の直近 `fact_reviews` からSERP対象URLをmatrix化し、複数施設の関連度 raw response 保存と rank fact 更新を行う。Issue の `relevance_rank_limit` は `fact_review_relevance_ranks` の最大順位として反映する。
 - `.github/workflows/raw-elt-ingest.yml`: 手動実行または将来の再利用ワークフローから raw object と manifest を生成する。
 - `.github/workflows/raw-object-replay.yml`: GCS 上の raw object と manifest を BigQuery raw table へ再投入する復旧 workflow。
 - `.github/workflows/bigquery-transform.yml`: BigQuery SQL を単体または標準順序の `all` で手動実行する変換 workflow。

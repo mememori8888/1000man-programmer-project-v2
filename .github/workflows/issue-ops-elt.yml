@@ -207,6 +207,7 @@ jobs:
       start_from_batch: ${{ fromJson(needs.parse.outputs.payload_json).params.start_from_batch || '1' }}
       rows_per_batch: ${{ fromJson(needs.parse.outputs.payload_json).params.rows_per_batch || '10' }}
       row_limit: ${{ fromJson(needs.parse.outputs.payload_json).params.rows_per_batch || '10' }}
+      relevance_rank_limit: ${{ fromJson(needs.parse.outputs.payload_json).params.relevance_rank_limit || '10' }}
       serp_max_workers: ${{ fromJson(needs.parse.outputs.payload_json).params.serp_max_workers || '3' }}
 
   report:

@@ -94,6 +94,9 @@ def test_serp_relevance_batch_workflow_builds_matrix_and_stores_raw_responses():
     assert "finalize:" in workflow_text
     assert "sql/bigquery/020_parse_raw_serp_responses.sql" in workflow_text
     assert "sql/bigquery/120_build_review_relevance_ranks.sql" in workflow_text
+    assert "Apply relevance rank limit" in workflow_text
+    assert "RELEVANCE_RANK_LIMIT" in workflow_text
+    assert "rank_position <=" in workflow_text
     assert "SERP relevance prepare" in workflow_text
     assert "SERP relevance finalize" in workflow_text
 
@@ -111,6 +114,7 @@ def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract(
     assert "needs: [parse, extract]" in workflow_text
     assert "workflow_type == 'reviews_recent_relevance'" in workflow_text
     assert "target_source: bigquery_recent_reviews" in workflow_text
+    assert "params.relevance_rank_limit" in workflow_text
 
 
 def test_issue_ops_routes_generic_reviews_to_brightdata_extract():

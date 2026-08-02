@@ -51,6 +51,10 @@ on:
         description: Max rows to request
         required: false
         default: "10"
+      relevance_rank_limit:
+        description: Keep only ranks up to this position in the relevance fact table
+        required: false
+        default: "10"
       serp_max_workers:
         description: Maximum parallel SERP requests
         required: false
@@ -97,6 +101,10 @@ on:
         type: string
         default: ""
       row_limit:
+        required: false
+        type: string
+        default: "10"
+      relevance_rank_limit:
         required: false
         type: string
         default: "10"
@@ -410,6 +418,35 @@ jobs:
             --project-id "${{ inputs.bigquery_project_id }}" \
             --dataset "${{ inputs.bigquery_dataset }}"
 
+      - name: Apply relevance rank limit
+        run: |
+          mkdir -p work
+          python - <<'PY' > work/apply-rank-limit.sql
+          import os
+
+          rank_limit = int(os.environ["RELEVANCE_RANK_LIMIT"])
+          if rank_limit < 1:
+              raise SystemExit("relevance_rank_limit must be greater than 0")
+          project_id = os.environ["BIGQUERY_PROJECT_ID"]
+          dataset = os.environ["BIGQUERY_DATASET"]
+          print(f"""
+          create or replace table `{project_id}.{dataset}.fact_review_relevance_ranks`
+          cluster by facility_id, review_id
+          as
+          select *
+          from `{project_id}.{dataset}.fact_review_relevance_ranks`
+          where rank_position <= {rank_limit}
+          """.strip())
+          PY
+          elt-bigquery run-sql \
+            --sql-file work/apply-rank-limit.sql \
+            --project-id "${{ inputs.bigquery_project_id }}" \
+            --dataset "${{ inputs.bigquery_dataset }}"
+        env:
+          BIGQUERY_PROJECT_ID: ${{ inputs.bigquery_project_id }}
+          BIGQUERY_DATASET: ${{ inputs.bigquery_dataset }}
+          RELEVANCE_RANK_LIMIT: ${{ inputs.relevance_rank_limit }}
+
       - name: Summary
         run: |
           {
@@ -417,4 +454,5 @@ jobs:
             echo "- BigQuery dataset: \`${{ inputs.bigquery_project_id }}.${{ inputs.bigquery_dataset }}\`"
             echo "- parsed table: \`raw_serp_relevance_parsed\`"
             echo "- fact table: \`fact_review_relevance_ranks\`"
+            echo "- relevance_rank_limit: \`${{ inputs.relevance_rank_limit }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
