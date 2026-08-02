@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from elt_v2.bigquery_loader import (
@@ -10,6 +11,7 @@ from elt_v2.bigquery_loader import (
     build_compatibility_audit_plan,
     build_recent_review_serp_targets_sql,
     build_raw_load_plan,
+    compatibility_audit_has_diff,
     export_table_to_gcs_csv,
     load_manifest_file,
     load_raw_payload_to_bigquery,
@@ -91,6 +93,7 @@ def main(argv: list[str] | None = None) -> int:
     audit_parser.add_argument("--sample-limit", type=int, default=20)
     audit_parser.add_argument("--output", type=Path)
     audit_parser.add_argument("--dry-run-sql", action="store_true")
+    audit_parser.add_argument("--fail-on-diff", action="store_true")
 
     targets_parser = subparsers.add_parser(
         "build-serp-targets",
@@ -221,6 +224,9 @@ def main(argv: list[str] | None = None) -> int:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(encoded + "\n", encoding="utf-8")
         print(encoded)
+        if args.fail_on_diff and compatibility_audit_has_diff(result):
+            sys.stderr.write("compatibility audit found missing keys; see the JSON report for samples\n")
+            return 1
         return 0
 
     if args.command == "build-serp-targets":

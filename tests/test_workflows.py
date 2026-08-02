@@ -201,12 +201,14 @@ def test_compatibility_audit_workflow_uses_private_csv_and_bigquery_diff():
     assert "--legacy-key-column" in workflow_text
     assert "elt-bigquery run-all-sql" in workflow_text
     assert "run_transform" in workflow_text
+    assert "fail_on_diff" in workflow_text
     assert "_compat_${{ github.run_id }}_${{ github.run_attempt }}" in workflow_text
     assert "--temp-table \"$TEMP_TABLE\"" in workflow_text
     assert "compatibility-audit.json" in workflow_text
     assert "GITHUB_STEP_SUMMARY" in workflow_text
     assert "missing_in_bq_sample" in workflow_text
     assert "missing_in_legacy_sample" in workflow_text
+    assert "Fail on compatibility diff" in workflow_text
 
 
 def test_webapp_uses_curated_public_file_presets():

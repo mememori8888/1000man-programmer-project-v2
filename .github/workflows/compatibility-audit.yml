@@ -39,6 +39,11 @@ on:
         required: false
         default: true
         type: boolean
+      fail_on_diff:
+        description: Fail the workflow when key differences are found
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -159,3 +164,16 @@ jobs:
         with:
           name: compatibility-audit
           path: work/compatibility-audit.json
+
+      - name: Fail on compatibility diff
+        if: ${{ inputs.fail_on_diff }}
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+
+          result = json.load(open("work/compatibility-audit.json", encoding="utf-8"))
+          if result["missing_in_bq_count"] or result["missing_in_legacy_count"]:
+              print("compatibility audit found missing keys; see the JSON report and summary for samples")
+              sys.exit(1)
+          PY

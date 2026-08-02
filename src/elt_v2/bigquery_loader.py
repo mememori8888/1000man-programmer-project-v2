@@ -285,6 +285,10 @@ select
 """.strip()
 
 
+def compatibility_audit_has_diff(result: dict[str, Any]) -> bool:
+    return int(result["missing_in_bq_count"]) > 0 or int(result["missing_in_legacy_count"]) > 0
+
+
 def build_recent_review_serp_targets_sql(
     *,
     project_id: str,

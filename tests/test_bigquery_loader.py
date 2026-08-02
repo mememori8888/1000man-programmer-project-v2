@@ -11,6 +11,7 @@ from elt_v2.bigquery_loader import (
     build_recent_review_serp_targets_sql,
     build_raw_load_plan,
     build_raw_table_row,
+    compatibility_audit_has_diff,
     load_manifest_file,
     parse_gcs_uri,
     render_compatibility_audit_sql,
@@ -217,6 +218,12 @@ def test_builds_compatibility_audit_sql(tmp_path):
     assert "missing_in_bq_count" in sql
     assert "missing_in_legacy_count" in sql
     assert "limit 5" in sql
+
+
+def test_detects_compatibility_audit_diff():
+    assert compatibility_audit_has_diff({"missing_in_bq_count": 1, "missing_in_legacy_count": 0})
+    assert compatibility_audit_has_diff({"missing_in_bq_count": 0, "missing_in_legacy_count": 2})
+    assert not compatibility_audit_has_diff({"missing_in_bq_count": 0, "missing_in_legacy_count": 0})
 
 
 def test_builds_recent_review_serp_targets_sql():
