@@ -10,6 +10,7 @@ from elt_v2.bigquery_loader import (
     build_raw_load_plan,
     build_raw_table_row,
     load_manifest_file,
+    parse_gcs_uri,
     render_sql_template,
     run_sql_files,
 )
@@ -120,6 +121,19 @@ def test_load_manifest_file_accepts_utf8_bom(tmp_path):
     manifest_path.write_text('{"dataset_kind":"reviews"}', encoding="utf-8-sig")
 
     assert load_manifest_file(manifest_path)["dataset_kind"] == "reviews"
+
+
+def test_parse_gcs_uri():
+    assert parse_gcs_uri("gs://raw-bucket/raw/reviews/file%20one.json") == (
+        "raw-bucket",
+        "raw/reviews/file one.json",
+    )
+
+    with pytest.raises(ValueError, match="gs://"):
+        parse_gcs_uri("https://example.com/file.json")
+
+    with pytest.raises(ValueError, match="bucket and object"):
+        parse_gcs_uri("gs://raw-bucket")
 
 
 def test_builds_csv_export_plan():

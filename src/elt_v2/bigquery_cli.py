@@ -12,6 +12,7 @@ from elt_v2.bigquery_loader import (
     load_manifest_file,
     load_raw_payload_to_bigquery,
     render_sql_template,
+    replay_gcs_raw_object_to_bigquery,
     run_sql_file,
     run_sql_files,
 )
@@ -33,6 +34,12 @@ def main(argv: list[str] | None = None) -> int:
     load_parser.add_argument("--dataset", required=True)
     load_parser.add_argument("--payload-file", required=True, type=Path)
     load_parser.add_argument("--source-uri")
+
+    replay_parser = subparsers.add_parser("replay-gcs-raw", help="Replay a GCS raw object into BigQuery.")
+    replay_parser.add_argument("--raw-uri", required=True)
+    replay_parser.add_argument("--manifest-uri")
+    replay_parser.add_argument("--project-id", required=True)
+    replay_parser.add_argument("--dataset", required=True)
 
     render_parser = subparsers.add_parser("render-sql", help="Render ${PROJECT_ID}/${DATASET} placeholders.")
     render_parser.add_argument("--sql-file", required=True, type=Path)
@@ -84,6 +91,16 @@ def main(argv: list[str] | None = None) -> int:
         )
         job_id = load_raw_payload_to_bigquery(plan, payload_file=args.payload_file)
         print(json.dumps({"job_id": job_id, "table_id": plan.table_id}, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "replay-gcs-raw":
+        result = replay_gcs_raw_object_to_bigquery(
+            raw_uri=args.raw_uri,
+            manifest_uri=args.manifest_uri,
+            project_id=args.project_id,
+            dataset=args.dataset,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "render-sql":

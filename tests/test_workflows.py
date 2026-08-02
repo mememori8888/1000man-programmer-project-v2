@@ -30,3 +30,12 @@ def test_serp_smoke_workflow_uses_brightdata_serp_cli():
     assert "BRIGHTDATA_API_TOKEN" in workflow_text
     assert "--zone" in workflow_text
     assert "upload-artifact" in workflow_text
+
+
+def test_raw_object_replay_workflow_uses_gcs_raw_replay_cli():
+    workflow_text = Path(".github/workflows/raw-object-replay.yml").read_text(encoding="utf-8")
+
+    assert "elt-bigquery" in workflow_text
+    assert "replay-gcs-raw" in workflow_text
+    assert "--raw-uri" in workflow_text
+    assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text

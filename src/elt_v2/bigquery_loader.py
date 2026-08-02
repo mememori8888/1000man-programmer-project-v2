@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 
 VALID_DATASET_KINDS = {"reviews", "facilities"}
@@ -147,6 +148,69 @@ def load_raw_payload_to_bigquery(plan: RawLoadPlan, *, payload_file: Path) -> st
     if errors:
         raise RuntimeError(f"BigQuery insert failed: {errors}")
     return "insert_rows_json"
+
+
+def parse_gcs_uri(uri: str) -> tuple[str, str]:
+    if not uri.startswith("gs://"):
+        raise ValueError("GCS URI must start with gs://")
+    remainder = uri[len("gs://") :]
+    bucket, separator, object_name = remainder.partition("/")
+    if not bucket or not separator or not object_name:
+        raise ValueError("GCS URI must include bucket and object name")
+    return bucket, unquote(object_name)
+
+
+def download_gcs_text(uri: str) -> str:
+    try:
+        from google.cloud import storage
+    except ImportError as exc:
+        raise RuntimeError(
+            "google-cloud-storage is required for GCS replay. Install with: pip install .[gcp]"
+        ) from exc
+
+    bucket_name, object_name = parse_gcs_uri(uri)
+    client = storage.Client()
+    blob = client.bucket(bucket_name).blob(object_name)
+    return blob.download_as_text(encoding="utf-8")
+
+
+def replay_gcs_raw_object_to_bigquery(
+    *,
+    raw_uri: str,
+    manifest_uri: str | None,
+    project_id: str,
+    dataset: str,
+) -> dict[str, str]:
+    resolved_manifest_uri = manifest_uri or f"{raw_uri}.manifest.json"
+    manifest = json.loads(download_gcs_text(resolved_manifest_uri))
+    raw_payload = download_gcs_text(raw_uri)
+    plan = build_raw_load_plan(
+        manifest=manifest,
+        project_id=project_id,
+        dataset=dataset,
+        source_uri=raw_uri,
+    )
+
+    try:
+        from google.cloud import bigquery
+    except ImportError as exc:
+        raise RuntimeError(
+            "google-cloud-bigquery is required. Install with: pip install .[gcp]"
+        ) from exc
+
+    client = bigquery.Client(project=plan.project_id)
+    errors = client.insert_rows_json(
+        plan.table_id,
+        [build_raw_table_row(plan=plan, raw_payload=raw_payload)],
+    )
+    if errors:
+        raise RuntimeError(f"BigQuery insert failed: {errors}")
+    return {
+        "job_id": "insert_rows_json",
+        "table_id": plan.table_id,
+        "raw_uri": raw_uri,
+        "manifest_uri": resolved_manifest_uri,
+    }
 
 
 def run_sql_file(path: Path, *, project_id: str, dataset: str) -> str:

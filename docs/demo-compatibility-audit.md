@@ -19,13 +19,12 @@ Source inspected: `mememori8888/demo` at `e6a01b3` (`Build canonical Google Maps
 | --- | --- |
 | `reviews_recent_with_relevance.yml` SERP rank enrichment | Keep Dataset extraction in ELT; add SERP rank enrichment as a downstream BigQuery/GCS stage |
 | `serp_reviews_smoke.yml` diagnostics | Add a v2 smoke workflow around `elt-brightdata run-serp` |
-| `recover-run-artifacts.yml` CSV batch recovery | Replace with raw object replay and BigQuery re-transform; keep a recovery doc/workflow after real GCS paths are known |
+| `recover-run-artifacts.yml` CSV batch recovery | Replaced by `.github/workflows/raw-object-replay.yml` for GCS raw object replay and BigQuery re-transform |
 | `generate-file-list.yml` / `docs/webapp/files.json` | v2 WebApp uses static defaults today; dynamic private-data file listing remains a compatibility gap |
 | n8n local relevance workflow | Keep optional; do not make it part of the standard cloud path |
 
 ## Next compatibility targets
 
 1. Add SERP smoke diagnostics to v2.
-2. Add raw object replay from a GCS URI into BigQuery.
-3. Add a relevance-rank enrichment stage that writes raw SERP responses first and transforms in BigQuery.
-4. Add dynamic file listing for WebApp inputs without exposing private repository contents publicly.
+2. Add a relevance-rank enrichment stage that writes raw SERP responses first and transforms in BigQuery.
+3. Add dynamic file listing for WebApp inputs without exposing private repository contents publicly.

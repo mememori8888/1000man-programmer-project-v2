@@ -198,6 +198,7 @@ where row_num = 1;
 - `.github/workflows/brightdata-extract.yml`: private data repo の CSV から BrightData Dataset API input items を作り、実取得する。
 - `.github/workflows/serp-reviews-smoke.yml`: BrightData SERP API の URL/zone 疎通を診断する。
 - `.github/workflows/raw-elt-ingest.yml`: IssueOps または手動実行から raw object と manifest を生成する。
+- `.github/workflows/raw-object-replay.yml`: GCS 上の raw object と manifest を BigQuery raw table へ再投入する復旧 workflow。
 - `.github/workflows/bigquery-transform.yml`: BigQuery SQL を単体または標準順序の `all` で手動実行する変換 workflow。
 - `.github/workflows/bigquery-export.yml`: `fact_reviews` または `dim_facilities` を GCS へ CSV export する互換 workflow。
 - `docs/webapp/`: v2 repo に Issue を作成する軽量 WebApp。
@@ -215,6 +216,11 @@ python -m elt_v2.cli `
   --local-output-root .\out
 
 python -m elt_v2.bigquery_cli list-sql
+
+python -m elt_v2.bigquery_cli replay-gcs-raw `
+  --raw-uri gs://your-bucket/raw/reviews/2026/08/03/source_run_id=run-1/payload.json `
+  --project-id your-gcp-project `
+  --dataset brightdata_raw
 
 python -m elt_v2.bigquery_cli export-csv `
   --project-id your-gcp-project `
