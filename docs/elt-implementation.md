@@ -11,4 +11,6 @@ This project moves heavy matching and deduplication out of Python and into BigQu
 
 ## Next boundary
 
-GitHub Actions should call the extractor after each BrightData job and upload raw files to GCS. A later workflow step should load those objects into BigQuery raw tables and run the SQL transforms in `sql/bigquery`.
+GitHub Actions can call the extractor after each BrightData job and upload raw files to GCS. When `ELT_RAW_GCS_BUCKET`, `ELT_BIGQUERY_PROJECT_ID`, and `ELT_BIGQUERY_DATASET` repository variables are configured, the IssueOps workflow also inserts one metadata-rich raw row into BigQuery.
+
+The current BigQuery contract is intentionally simple: one raw object becomes one row with `raw_payload`, `source_run_id`, `raw_object_uri`, `payload_sha256`, and timestamps. Parsing into `raw_reviews_parsed`, `dim_facilities`, and `fact_reviews` is handled by SQL files in `sql/bigquery`.

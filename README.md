@@ -41,6 +41,12 @@
 - `PRIVATE_REPO_PAT`
 - `BRIGHTDATA_ZONE_NAME` optional, default `serp_api2`
 
+GCS/BigQuery 連携を有効にする場合は、GitHub repository variables に次を設定します。
+
+- `ELT_RAW_GCS_BUCKET`
+- `ELT_BIGQUERY_PROJECT_ID`
+- `ELT_BIGQUERY_DATASET`
+
 ## 新アーキテクチャ
 
 標準構成は `Google Cloud Storage + BigQuery` に固定します。
@@ -189,6 +195,7 @@ where row_num = 1;
 - `src/elt_v2/issue_ops.py`: `/run-*` Issue コマンドと JSON パラメータを解析し、raw ingest 用 payload に変換する。
 - `.github/workflows/issue-ops-elt.yml`: demo と同じ IssueOps 承認体験を v2 に接続する。
 - `.github/workflows/raw-elt-ingest.yml`: IssueOps または手動実行から raw object と manifest を生成する。
+- `.github/workflows/bigquery-transform.yml`: BigQuery SQL を手動実行する変換 workflow。
 - `docs/webapp/`: v2 repo に Issue を作成する軽量 WebApp。
 - `sql/bigquery/`: BigQuery の raw table、mart table、レビュー重複排除 SQL。
 - `tests/`: raw object 生成と manifest 保存の単体テスト。

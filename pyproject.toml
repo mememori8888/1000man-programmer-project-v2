@@ -8,6 +8,7 @@ dependencies = []
 
 [project.optional-dependencies]
 gcp = [
+  "google-cloud-bigquery>=3.25.0",
   "google-cloud-storage>=2.18.0",
 ]
 dev = [
@@ -15,6 +16,7 @@ dev = [
 ]
 
 [project.scripts]
+elt-bigquery = "elt_v2.bigquery_cli:main"
 elt-raw-write = "elt_v2.cli:main"
 
 [build-system]

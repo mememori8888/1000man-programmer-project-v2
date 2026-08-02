@@ -1,0 +1,56 @@
+name: BigQuery transform
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: BigQuery project id
+        required: true
+      dataset:
+        description: BigQuery dataset
+        required: true
+      sql_file:
+        description: SQL file to run
+        required: true
+        default: sql/bigquery/101_deduplicate_reviews.sql
+        type: choice
+        options:
+          - sql/bigquery/001_create_raw_tables.sql
+          - sql/bigquery/002_create_mart_tables.sql
+          - sql/bigquery/101_deduplicate_reviews.sql
+
+permissions:
+  contents: read
+
+jobs:
+  run-sql:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[gcp]"
+
+      - name: Render SQL preview
+        run: |
+          elt-bigquery render-sql \
+            --sql-file "${{ inputs.sql_file }}" \
+            --project-id "${{ inputs.project_id }}" \
+            --dataset "${{ inputs.dataset }}" \
+            > rendered.sql
+          cat rendered.sql
+
+      - name: Run SQL
+        run: |
+          elt-bigquery run-sql \
+            --sql-file "${{ inputs.sql_file }}" \
+            --project-id "${{ inputs.project_id }}" \
+            --dataset "${{ inputs.dataset }}"

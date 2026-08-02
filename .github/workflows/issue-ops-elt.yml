@@ -128,7 +128,9 @@ jobs:
       dataset_kind: ${{ needs.parse.outputs.dataset_kind }}
       payload_json: ${{ needs.parse.outputs.payload_json }}
       source_run_id: issue-${{ github.event.issue.number }}-${{ github.run_id }}
-      gcs_bucket: ""
+      gcs_bucket: ${{ vars.ELT_RAW_GCS_BUCKET || '' }}
+      bigquery_project_id: ${{ vars.ELT_BIGQUERY_PROJECT_ID || '' }}
+      bigquery_dataset: ${{ vars.ELT_BIGQUERY_DATASET || '' }}
 
   report:
     needs: [parse, ingest]
