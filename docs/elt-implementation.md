@@ -11,6 +11,7 @@ This project moves heavy matching and deduplication out of Python and into BigQu
 - `elt-brightdata build-items` converts private-data CSV rows into BrightData Dataset API input items.
 - `elt-brightdata run-dataset` runs the BrightData Dataset API `trigger -> progress -> snapshot` flow and writes raw JSON output to a file.
 - `elt-brightdata run-serp` preserves the SERP API request path used by the existing demo for focused diagnostics and later relevance-rank work.
+- `.github/workflows/serp-reviews-smoke.yml` exposes that SERP diagnostic path as a manual workflow.
 - `.github/workflows/brightdata-extract.yml` keeps the BrightData result file inside the same job, stores it as a raw object, and only passes small metadata through GitHub outputs.
 - `elt-bigquery export-csv` and `.github/workflows/bigquery-export.yml` provide the compatibility path for users who still need CSV output from `fact_reviews` or `dim_facilities`.
 

@@ -21,3 +21,12 @@ def test_bigquery_export_workflow_uses_gcs_csv_destination():
     assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text
     assert "fact_reviews" in workflow_text
     assert "dim_facilities" in workflow_text
+
+
+def test_serp_smoke_workflow_uses_brightdata_serp_cli():
+    workflow_text = Path(".github/workflows/serp-reviews-smoke.yml").read_text(encoding="utf-8")
+
+    assert "elt-brightdata run-serp" in workflow_text
+    assert "BRIGHTDATA_API_TOKEN" in workflow_text
+    assert "--zone" in workflow_text
+    assert "upload-artifact" in workflow_text

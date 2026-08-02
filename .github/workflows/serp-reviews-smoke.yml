@@ -1,0 +1,49 @@
+name: SERP reviews smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Google Maps or reviews URL to diagnose
+        required: true
+      zone:
+        description: BrightData SERP zone name
+        required: false
+        default: serp_api2
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Run SERP request
+        env:
+          BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
+        run: |
+          elt-brightdata run-serp \
+            --url "${{ inputs.url }}" \
+            --zone "${{ inputs.zone }}" \
+            --output serp-smoke-result.json
+
+      - name: Upload SERP diagnostic artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: serp-smoke-${{ github.run_id }}
+          path: serp-smoke-result.json
+          if-no-files-found: error
+          retention-days: 14
