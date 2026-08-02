@@ -56,6 +56,9 @@ def test_serp_relevance_batch_workflow_builds_matrix_and_stores_raw_responses():
     assert "bigquery_recent_reviews" in workflow_text
     assert "build-serp-targets" in workflow_text
     assert "elt-bigquery run-all-sql" in workflow_text
+    assert "finalize:" in workflow_text
+    assert "sql/bigquery/020_parse_raw_serp_responses.sql" in workflow_text
+    assert "sql/bigquery/120_build_review_relevance_ranks.sql" in workflow_text
 
 
 def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract():
