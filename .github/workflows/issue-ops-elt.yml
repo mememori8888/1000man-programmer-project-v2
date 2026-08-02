@@ -96,7 +96,7 @@ jobs:
                   `- workflow: \`${process.env.WORKFLOW_TYPE}\``,
                   `- raw dataset: \`${process.env.DATASET_KIND}\``,
                   '',
-                  '管理者が `/承認` とコメントすると raw ELT ingest を開始します。'
+                  '管理者が `/承認` とコメントすると BrightData extract と raw ELT 保存を開始します。'
                 ].join('\n')
               : [
                   '## v2 ELT job validation failed',
@@ -170,18 +170,6 @@ jobs:
               print("errors=")
           PY
 
-  ingest:
-    needs: [parse, config]
-    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.config.outputs.valid == 'true' && needs.parse.outputs.workflow_type == 'reviews'
-    uses: ./.github/workflows/raw-elt-ingest.yml
-    with:
-      dataset_kind: ${{ needs.parse.outputs.dataset_kind }}
-      payload_json: ${{ needs.parse.outputs.payload_json }}
-      source_run_id: issue-${{ github.event.issue.number }}-${{ github.run_id }}
-      gcs_bucket: ${{ vars.ELT_RAW_GCS_BUCKET || '' }}
-      bigquery_project_id: ${{ vars.ELT_BIGQUERY_PROJECT_ID || '' }}
-      bigquery_dataset: ${{ vars.ELT_BIGQUERY_DATASET || '' }}
-
   extract:
     needs: [parse, config]
     if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.config.outputs.valid == 'true'
@@ -219,14 +207,13 @@ jobs:
       serp_max_workers: ${{ fromJson(needs.parse.outputs.payload_json).params.serp_max_workers || '3' }}
 
   report:
-    needs: [parse, config, ingest, extract, serp_relevance]
+    needs: [parse, config, extract, serp_relevance]
     if: always() && needs.parse.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Report result
         uses: actions/github-script@v7
         env:
-          RAW_RESULT: ${{ needs.ingest.result }}
           EXTRACT_RESULT: ${{ needs.extract.result }}
           SERP_RESULT: ${{ needs.serp_relevance.result }}
           CONFIG_RESULT: ${{ needs.config.result }}
@@ -236,7 +223,6 @@ jobs:
           VALIDATION_ERRORS: ${{ needs.parse.outputs.validation_errors }}
         with:
           script: |
-            const rawResult = process.env.RAW_RESULT || 'skipped';
             const extractResult = process.env.EXTRACT_RESULT || 'skipped';
             const serpResult = process.env.SERP_RESULT || 'skipped';
             const configResult = process.env.CONFIG_RESULT || 'skipped';
@@ -246,7 +232,6 @@ jobs:
             const errors = process.env.VALIDATION_ERRORS || '';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const activeResults = [
-              ['raw ingest', rawResult],
               ['BrightData extract', extractResult],
               ['SERP relevance', serpResult],
             ].filter(([, result]) => result && result !== 'skipped');

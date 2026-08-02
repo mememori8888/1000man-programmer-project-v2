@@ -100,6 +100,8 @@ def test_issue_ops_routes_generic_reviews_to_brightdata_extract():
     workflow_text = Path(".github/workflows/issue-ops-elt.yml").read_text(encoding="utf-8")
 
     assert "uses: ./.github/workflows/brightdata-extract.yml" in workflow_text
+    assert "uses: ./.github/workflows/raw-elt-ingest.yml" not in workflow_text
+    assert "needs.ingest" not in workflow_text
     assert "params.fid_file" in workflow_text
     assert "params.start_line" in workflow_text
     assert "params.process_count" in workflow_text
