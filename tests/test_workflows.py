@@ -63,6 +63,9 @@ def test_preflight_workflow_checks_required_runtime_settings():
     assert "ELT_BIGQUERY_PROJECT_ID" in workflow_text
     assert "ELT_BIGQUERY_DATASET" in workflow_text
     assert "get_dataset" in workflow_text
+    assert "Dry-run managed BigQuery transforms" in workflow_text
+    assert "elt-bigquery dry-run-all-sql" in workflow_text
+    assert "work-bigquery-dry-run.json" in workflow_text
     assert "mememori8888/googlemap" in workflow_text
 
 

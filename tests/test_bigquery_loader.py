@@ -12,6 +12,7 @@ from elt_v2.bigquery_loader import (
     build_raw_load_plan,
     build_raw_table_row,
     compatibility_audit_has_diff,
+    dry_run_sql_files,
     load_manifest_file,
     parse_gcs_uri,
     render_compatibility_audit_sql,
@@ -302,6 +303,31 @@ def test_run_sql_files_preserves_order(monkeypatch):
     assert results == [
         {"sql_file": TRANSFORM_SQL_FILES[0], "job_id": "job-1"},
         {"sql_file": TRANSFORM_SQL_FILES[1], "job_id": "job-2"},
+    ]
+    assert calls == [
+        (TRANSFORM_SQL_FILES[0], "project-123", "brightdata_raw"),
+        (TRANSFORM_SQL_FILES[1], "project-123", "brightdata_raw"),
+    ]
+
+
+def test_dry_run_sql_files_preserves_order(monkeypatch):
+    calls = []
+
+    def fake_dry_run_sql_file(path, *, project_id, dataset):
+        calls.append((str(path), project_id, dataset))
+        return {"sql_file": str(path), "job_id": f"dry-run-{len(calls)}", "total_bytes_processed": 0}
+
+    monkeypatch.setattr("elt_v2.bigquery_loader.dry_run_sql_file", fake_dry_run_sql_file)
+
+    results = dry_run_sql_files(
+        [TRANSFORM_SQL_FILES[0], TRANSFORM_SQL_FILES[1]],
+        project_id="project-123",
+        dataset="brightdata_raw",
+    )
+
+    assert results == [
+        {"sql_file": TRANSFORM_SQL_FILES[0], "job_id": "dry-run-1", "total_bytes_processed": 0},
+        {"sql_file": TRANSFORM_SQL_FILES[1], "job_id": "dry-run-2", "total_bytes_processed": 0},
     ]
     assert calls == [
         (TRANSFORM_SQL_FILES[0], "project-123", "brightdata_raw"),

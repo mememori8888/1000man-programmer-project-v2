@@ -12,6 +12,8 @@ from elt_v2.bigquery_loader import (
     build_recent_review_serp_targets_sql,
     build_raw_load_plan,
     compatibility_audit_has_diff,
+    dry_run_sql_file,
+    dry_run_sql_files,
     export_table_to_gcs_csv,
     load_manifest_file,
     load_raw_payload_to_bigquery,
@@ -61,6 +63,18 @@ def main(argv: list[str] | None = None) -> int:
     run_all_parser = subparsers.add_parser("run-all-sql", help="Run managed SQL files in dependency order.")
     run_all_parser.add_argument("--project-id", required=True)
     run_all_parser.add_argument("--dataset", required=True)
+
+    dry_run_parser = subparsers.add_parser("dry-run-sql", help="Dry-run a SQL file in BigQuery.")
+    dry_run_parser.add_argument("--sql-file", required=True, type=Path)
+    dry_run_parser.add_argument("--project-id", required=True)
+    dry_run_parser.add_argument("--dataset", required=True)
+
+    dry_run_all_parser = subparsers.add_parser(
+        "dry-run-all-sql",
+        help="Dry-run managed SQL files in dependency order.",
+    )
+    dry_run_all_parser.add_argument("--project-id", required=True)
+    dry_run_all_parser.add_argument("--dataset", required=True)
 
     export_parser = subparsers.add_parser("export-csv", help="Export a BigQuery table to GCS as CSV.")
     export_parser.add_argument("--project-id", required=True)
@@ -165,6 +179,20 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "run-all-sql":
         results = run_sql_files(
+            [Path(filename) for filename in TRANSFORM_SQL_FILES],
+            project_id=args.project_id,
+            dataset=args.dataset,
+        )
+        print(json.dumps({"jobs": results}, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "dry-run-sql":
+        result = dry_run_sql_file(args.sql_file, project_id=args.project_id, dataset=args.dataset)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "dry-run-all-sql":
+        results = dry_run_sql_files(
             [Path(filename) for filename in TRANSFORM_SQL_FILES],
             project_id=args.project_id,
             dataset=args.dataset,

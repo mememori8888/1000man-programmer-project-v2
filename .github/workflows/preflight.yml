@@ -120,6 +120,14 @@ jobs:
           print(f"BigQuery dataset ok: {project_id}.{dataset}")
           PY
 
+      - name: Dry-run managed BigQuery transforms
+        if: inputs.check_gcp == 'true'
+        run: |
+          elt-bigquery dry-run-all-sql \
+            --project-id "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" \
+            --dataset "${{ vars.ELT_BIGQUERY_DATASET }}" \
+            | tee work-bigquery-dry-run.json
+
       - name: Check private data repository access
         if: inputs.check_private_repo == 'true'
         uses: actions/checkout@v4
@@ -138,4 +146,7 @@ jobs:
             echo "- BrightData token check: ${{ inputs.check_brightdata }}"
             echo "- Private data repo check: ${{ inputs.check_private_repo }}"
             echo "- GCP check: ${{ inputs.check_gcp }}"
+            if [ -f work-bigquery-dry-run.json ]; then
+              echo "- BigQuery transform dry-run: \`work-bigquery-dry-run.json\`"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"

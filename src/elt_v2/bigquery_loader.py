@@ -461,12 +461,35 @@ def run_sql_file(path: Path, *, project_id: str, dataset: str) -> str:
     return query_job.job_id
 
 
+def dry_run_sql_file(path: Path, *, project_id: str, dataset: str) -> dict[str, str | int]:
+    try:
+        from google.cloud import bigquery
+    except ImportError as exc:
+        raise RuntimeError(
+            "google-cloud-bigquery is required. Install with: pip install .[gcp]"
+        ) from exc
+
+    sql = render_sql_template(path.read_text(encoding="utf-8"), project_id=project_id, dataset=dataset)
+    client = bigquery.Client(project=project_id)
+    job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
+    query_job = client.query(sql, job_config=job_config)
+    return {
+        "sql_file": str(path),
+        "job_id": query_job.job_id,
+        "total_bytes_processed": int(query_job.total_bytes_processed or 0),
+    }
+
+
 def run_sql_files(paths: list[Path], *, project_id: str, dataset: str) -> list[dict[str, str]]:
     results = []
     for path in paths:
         job_id = run_sql_file(path, project_id=project_id, dataset=dataset)
         results.append({"sql_file": str(path), "job_id": job_id})
     return results
+
+
+def dry_run_sql_files(paths: list[Path], *, project_id: str, dataset: str) -> list[dict[str, str | int]]:
+    return [dry_run_sql_file(path, project_id=project_id, dataset=dataset) for path in paths]
 
 
 def export_table_to_gcs_csv(plan: CsvExportPlan) -> str:

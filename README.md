@@ -49,7 +49,7 @@ GCS/BigQuery 連携を有効にする場合は、GitHub repository variables に
 - `ELT_BIGQUERY_PROJECT_ID`
 - `ELT_BIGQUERY_DATASET`
 
-設定後は Actions の `v2 ELT preflight` を手動実行し、BrightData token、private data repo、GCS、BigQuery dataset の接続を確認します。
+設定後は Actions の `v2 ELT preflight` を手動実行し、BrightData token、private data repo、GCS、BigQuery dataset、標準 BigQuery transform SQL の dry-run を確認します。
 
 ## 新アーキテクチャ
 
