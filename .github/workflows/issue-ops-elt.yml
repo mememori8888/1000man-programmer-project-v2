@@ -156,6 +156,10 @@ jobs:
     secrets: inherit
     with:
       csv_file: ${{ fromJson(needs.parse.outputs.payload_json).params.csv_file || 'results/dental_new.csv' }}
+      target_source: bigquery_recent_reviews
+      bigquery_project_id: ${{ vars.ELT_BIGQUERY_PROJECT_ID || '' }}
+      bigquery_dataset: ${{ vars.ELT_BIGQUERY_DATASET || '' }}
+      days_back: ${{ fromJson(needs.parse.outputs.payload_json).params.days_back || '30' }}
       skip_column: ${{ fromJson(needs.parse.outputs.payload_json).params.skip_column || 'web' }}
       zone: ${{ fromJson(needs.parse.outputs.payload_json).params.serp_zone_name || 'serp_api2' }}
       start_from_batch: ${{ fromJson(needs.parse.outputs.payload_json).params.start_from_batch || '1' }}

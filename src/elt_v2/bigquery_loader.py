@@ -134,6 +134,53 @@ def render_sql_template(sql_text: str, *, project_id: str, dataset: str) -> str:
     return sql_text.replace("${PROJECT_ID}", project_id).replace("${DATASET}", dataset)
 
 
+def build_recent_review_serp_targets_sql(
+    *,
+    project_id: str,
+    dataset: str,
+    days_back: int,
+    row_limit: int | None = None,
+) -> str:
+    _validate_identifier(project_id, "project_id", allow_dash=True)
+    _validate_identifier(dataset, "dataset")
+    if days_back < 1:
+        raise ValueError("days_back must be greater than 0")
+    if row_limit is not None and row_limit < 1:
+        raise ValueError("row_limit must be greater than 0 when provided")
+
+    limit_clause = f"\nlimit {row_limit}" if row_limit is not None else ""
+    return f"""
+with recent_facilities as (
+  select
+    facility_id,
+    max(extracted_at) as latest_review_extracted_at,
+    count(*) as recent_review_count
+  from `{project_id}.{dataset}.fact_reviews`
+  where coalesce(review_date, date(extracted_at)) >= date_sub(current_date(), interval {days_back} day)
+  group by facility_id
+),
+targets as (
+  select
+    recent_facilities.facility_id,
+    dim_facilities.google_map_url as url,
+    recent_facilities.latest_review_extracted_at,
+    recent_facilities.recent_review_count
+  from recent_facilities
+  join `{project_id}.{dataset}.dim_facilities` as dim_facilities
+    using (facility_id)
+  where dim_facilities.google_map_url is not null
+    and dim_facilities.google_map_url != ''
+)
+select
+  row_number() over (
+    order by latest_review_extracted_at desc, recent_review_count desc, facility_id
+  ) as index,
+  facility_id,
+  url
+from targets{limit_clause}
+""".strip()
+
+
 def load_manifest_file(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
@@ -263,6 +310,40 @@ def export_table_to_gcs_csv(plan: CsvExportPlan) -> str:
     )
     extract_job.result()
     return extract_job.job_id
+
+
+def query_recent_review_serp_targets(
+    *,
+    project_id: str,
+    dataset: str,
+    days_back: int,
+    row_limit: int | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    try:
+        from google.cloud import bigquery
+    except ImportError as exc:
+        raise RuntimeError(
+            "google-cloud-bigquery is required. Install with: pip install .[gcp]"
+        ) from exc
+
+    sql = build_recent_review_serp_targets_sql(
+        project_id=project_id,
+        dataset=dataset,
+        days_back=days_back,
+        row_limit=row_limit,
+    )
+    client = bigquery.Client(project=project_id)
+    rows = client.query(sql).result()
+    return {
+        "include": [
+            {
+                "index": int(row["index"]),
+                "facility_id": str(row["facility_id"]),
+                "url": str(row["url"]),
+            }
+            for row in rows
+        ]
+    }
 
 
 def _validate_identifier(value: str, name: str, *, allow_dash: bool = False) -> None:

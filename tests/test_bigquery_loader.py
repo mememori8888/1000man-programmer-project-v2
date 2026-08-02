@@ -7,6 +7,7 @@ import pytest
 from elt_v2.bigquery_loader import (
     TRANSFORM_SQL_FILES,
     build_csv_export_plan,
+    build_recent_review_serp_targets_sql,
     build_raw_load_plan,
     build_raw_table_row,
     load_manifest_file,
@@ -165,6 +166,21 @@ def test_builds_csv_export_plan():
 
     assert plan.table_id == "project-123.brightdata_raw.fact_reviews"
     assert plan.destination_uri == "gs://export-bucket/reviews/fact_reviews-*.csv"
+
+
+def test_builds_recent_review_serp_targets_sql():
+    sql = build_recent_review_serp_targets_sql(
+        project_id="project-123",
+        dataset="brightdata_raw",
+        days_back=30,
+        row_limit=10,
+    )
+
+    assert "`project-123.brightdata_raw.fact_reviews`" in sql
+    assert "`project-123.brightdata_raw.dim_facilities`" in sql
+    assert "interval 30 day" in sql
+    assert "limit 10" in sql
+    assert "google_map_url" in sql
 
 
 def test_rejects_non_gcs_csv_export_uri():

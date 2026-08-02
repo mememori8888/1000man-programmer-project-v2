@@ -7,12 +7,14 @@ from pathlib import Path
 from elt_v2.bigquery_loader import (
     TRANSFORM_SQL_FILES,
     build_csv_export_plan,
+    build_recent_review_serp_targets_sql,
     build_raw_load_plan,
     export_table_to_gcs_csv,
     load_manifest_file,
     load_raw_payload_to_bigquery,
     render_sql_template,
     replay_gcs_raw_object_to_bigquery,
+    query_recent_review_serp_targets,
     run_sql_file,
     run_sql_files,
 )
@@ -60,6 +62,17 @@ def main(argv: list[str] | None = None) -> int:
     export_parser.add_argument("--dataset", required=True)
     export_parser.add_argument("--table", required=True)
     export_parser.add_argument("--destination-uri", required=True)
+
+    targets_parser = subparsers.add_parser(
+        "build-serp-targets",
+        help="Build a SERP target matrix from recent BigQuery reviews.",
+    )
+    targets_parser.add_argument("--project-id", required=True)
+    targets_parser.add_argument("--dataset", required=True)
+    targets_parser.add_argument("--days-back", type=int, required=True)
+    targets_parser.add_argument("--row-limit", type=int)
+    targets_parser.add_argument("--output", type=Path)
+    targets_parser.add_argument("--dry-run-sql", action="store_true")
 
     list_parser = subparsers.add_parser("list-sql", help="List managed BigQuery SQL files.")
     list_parser.set_defaults(list_sql=True)
@@ -142,6 +155,33 @@ def main(argv: list[str] | None = None) -> int:
                 indent=2,
             )
         )
+        return 0
+
+    if args.command == "build-serp-targets":
+        if args.dry_run_sql:
+            print(
+                build_recent_review_serp_targets_sql(
+                    project_id=args.project_id,
+                    dataset=args.dataset,
+                    days_back=args.days_back,
+                    row_limit=args.row_limit,
+                )
+            )
+            return 0
+
+        matrix = query_recent_review_serp_targets(
+            project_id=args.project_id,
+            dataset=args.dataset,
+            days_back=args.days_back,
+            row_limit=args.row_limit,
+        )
+        encoded = json.dumps(matrix, ensure_ascii=False, indent=2)
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(encoded + "\n", encoding="utf-8")
+            print(json.dumps({"items": len(matrix["include"]), "output": str(args.output)}, ensure_ascii=False, indent=2))
+        else:
+            print(encoded)
         return 0
 
     parser.error(f"unsupported command: {args.command}")

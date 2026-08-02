@@ -26,4 +26,4 @@ Source inspected: `mememori8888/demo` at `e6a01b3` (`Build canonical Google Maps
 ## Next compatibility targets
 
 1. Add dynamic file listing for WebApp inputs without exposing private repository contents publicly.
-2. Narrow SERP relevance orchestration to facilities that actually had recent Dataset reviews, instead of using the CSV row window alone.
+2. Verify the BigQuery recent-review target path against a real BrightData run and compare row counts with the old CSV outputs.

@@ -52,6 +52,10 @@ def test_serp_relevance_batch_workflow_builds_matrix_and_stores_raw_responses():
     assert "max-parallel" in workflow_text
     assert "START_FROM_BATCH" in workflow_text
     assert "effective_start_row" in workflow_text
+    assert "target_source" in workflow_text
+    assert "bigquery_recent_reviews" in workflow_text
+    assert "build-serp-targets" in workflow_text
+    assert "elt-bigquery run-all-sql" in workflow_text
 
 
 def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract():
@@ -61,6 +65,7 @@ def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract(
     assert "uses: ./.github/workflows/serp-relevance-batch.yml" in workflow_text
     assert "needs: [parse, extract]" in workflow_text
     assert "workflow_type == 'reviews_recent_relevance'" in workflow_text
+    assert "target_source: bigquery_recent_reviews" in workflow_text
 
 
 def test_raw_object_replay_workflow_uses_gcs_raw_replay_cli():
