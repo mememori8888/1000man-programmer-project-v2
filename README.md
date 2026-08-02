@@ -225,6 +225,7 @@ where row_num = 1;
 - `.github/workflows/raw-object-replay.yml`: GCS 上の raw object と manifest を BigQuery raw table へ再投入する復旧 workflow。
 - `.github/workflows/bigquery-transform.yml`: BigQuery SQL を単体または標準順序の `all` で手動実行する変換 workflow。
 - `.github/workflows/bigquery-export.yml`: `fact_reviews` または `dim_facilities` を GCS へ CSV export する互換 workflow。
+- `.github/workflows/compatibility-audit.yml`: private repo の旧CSVを BigQuery 一時監査テーブルへロードし、v2 mart との件数・キー差分を確認する workflow。
 - `docs/webapp/`: v2 repo に Issue を作成する軽量 WebApp。
 - `sql/bigquery/`: BigQuery の raw table、raw payload 解析、mart table、レビュー重複排除、関連度ランク fact 生成 SQL。
 - `tests/`: raw object 生成と manifest 保存の単体テスト。
@@ -251,6 +252,14 @@ python -m elt_v2.bigquery_cli export-csv `
   --dataset brightdata_raw `
   --table fact_reviews `
   --destination-uri gs://your-bucket/exports/fact_reviews-*.csv
+
+python -m elt_v2.bigquery_cli audit-csv-compat `
+  --project-id your-gcp-project `
+  --dataset brightdata_raw `
+  --legacy-csv .\private-data\results\dental_reviews.csv `
+  --bq-table fact_reviews `
+  --legacy-key-column review_id `
+  --bq-key-column review_id
 ```
 
 ## 不要・整理候補

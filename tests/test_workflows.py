@@ -110,6 +110,18 @@ def test_raw_ingest_workflow_writes_step_summary():
     assert "GCS raw object" in workflow_text
 
 
+def test_compatibility_audit_workflow_uses_private_csv_and_bigquery_diff():
+    workflow_text = Path(".github/workflows/compatibility-audit.yml").read_text(encoding="utf-8")
+
+    assert "repository: mememori8888/googlemap" in workflow_text
+    assert "PRIVATE_REPO_PAT" in workflow_text
+    assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text
+    assert "elt-bigquery audit-csv-compat" in workflow_text
+    assert "--legacy-key-column" in workflow_text
+    assert "compatibility-audit.json" in workflow_text
+    assert "GITHUB_STEP_SUMMARY" in workflow_text
+
+
 def test_webapp_uses_curated_public_file_presets():
     app_text = Path("docs/webapp/app.js").read_text(encoding="utf-8")
     index_text = Path("docs/webapp/index.html").read_text(encoding="utf-8")

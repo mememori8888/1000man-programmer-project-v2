@@ -29,3 +29,5 @@ SERP relevance responses use the same contract through `raw_serp_responses`; `02
 CSV compatibility output is also handled by BigQuery, not Python loops. BigQuery extract jobs write CSV shards directly to GCS, which keeps runner memory and disk usage independent of table size.
 
 Recovery follows the same raw-first contract: if a previous run produced a raw object in GCS, replay the raw object into BigQuery and rerun the transform SQL. That replaces the old CSV batch recovery path with an idempotent DWH-centered flow.
+
+Compatibility verification is explicit: `.github/workflows/compatibility-audit.yml` loads one legacy CSV from the private data repo into a temporary BigQuery audit table, then compares row counts, distinct key counts, and key-diff samples against a v2 mart table. This keeps the final demo-vs-v2 proof inside BigQuery instead of pulling large tables into Python memory.

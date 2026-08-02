@@ -6,12 +6,14 @@ import pytest
 
 from elt_v2.bigquery_loader import (
     TRANSFORM_SQL_FILES,
+    build_compatibility_audit_plan,
     build_csv_export_plan,
     build_recent_review_serp_targets_sql,
     build_raw_load_plan,
     build_raw_table_row,
     load_manifest_file,
     parse_gcs_uri,
+    render_compatibility_audit_sql,
     render_sql_template,
     run_sql_files,
 )
@@ -166,6 +168,30 @@ def test_builds_csv_export_plan():
 
     assert plan.table_id == "project-123.brightdata_raw.fact_reviews"
     assert plan.destination_uri == "gs://export-bucket/reviews/fact_reviews-*.csv"
+
+
+def test_builds_compatibility_audit_sql(tmp_path):
+    legacy_csv = tmp_path / "legacy.csv"
+    legacy_csv.write_text("review_id,facility_id\nr1,f1\n", encoding="utf-8")
+
+    plan = build_compatibility_audit_plan(
+        project_id="project-123",
+        dataset="brightdata_raw",
+        legacy_csv_path=legacy_csv,
+        bq_table="fact_reviews",
+        legacy_key_columns=["review_id", "facility_id"],
+        bq_key_columns=["review_id", "facility_id"],
+        temp_table="_compat_test",
+        sample_limit=5,
+    )
+    sql = render_compatibility_audit_sql(plan)
+
+    assert plan.temp_table_id == "project-123.brightdata_raw._compat_test"
+    assert "`project-123.brightdata_raw._compat_test`" in sql
+    assert "`project-123.brightdata_raw.fact_reviews`" in sql
+    assert "missing_in_bq_count" in sql
+    assert "missing_in_legacy_count" in sql
+    assert "limit 5" in sql
 
 
 def test_builds_recent_review_serp_targets_sql():

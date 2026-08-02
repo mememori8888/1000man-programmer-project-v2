@@ -54,6 +54,26 @@ class CsvExportPlan:
         return f"{self.project_id}.{self.dataset}.{self.table}"
 
 
+@dataclass(frozen=True)
+class CompatibilityAuditPlan:
+    project_id: str
+    dataset: str
+    legacy_csv_path: Path
+    bq_table: str
+    legacy_key_columns: tuple[str, ...]
+    bq_key_columns: tuple[str, ...]
+    temp_table: str
+    sample_limit: int = 20
+
+    @property
+    def temp_table_id(self) -> str:
+        return f"{self.project_id}.{self.dataset}.{self.temp_table}"
+
+    @property
+    def bq_table_id(self) -> str:
+        return f"{self.project_id}.{self.dataset}.{self.bq_table}"
+
+
 def build_raw_table_row(*, plan: RawLoadPlan, raw_payload: str) -> dict[str, Any]:
     return {
         "source_run_id": plan.source_run_id,
@@ -128,10 +148,105 @@ def build_csv_export_plan(
     )
 
 
+def build_compatibility_audit_plan(
+    *,
+    project_id: str,
+    dataset: str,
+    legacy_csv_path: Path,
+    bq_table: str,
+    legacy_key_columns: list[str],
+    bq_key_columns: list[str] | None = None,
+    temp_table: str = "_compat_legacy_csv_audit",
+    sample_limit: int = 20,
+) -> CompatibilityAuditPlan:
+    _validate_identifier(project_id, "project_id", allow_dash=True)
+    _validate_identifier(dataset, "dataset")
+    _validate_identifier(bq_table, "bq_table")
+    _validate_identifier(temp_table, "temp_table")
+    if not legacy_csv_path.exists():
+        raise ValueError(f"legacy_csv_path does not exist: {legacy_csv_path}")
+    if legacy_csv_path.suffix.lower() != ".csv":
+        raise ValueError("legacy_csv_path must be a .csv file")
+    if not legacy_key_columns:
+        raise ValueError("at least one legacy_key_column is required")
+    resolved_bq_key_columns = bq_key_columns or legacy_key_columns
+    if len(legacy_key_columns) != len(resolved_bq_key_columns):
+        raise ValueError("legacy_key_columns and bq_key_columns must have the same length")
+    if sample_limit < 1:
+        raise ValueError("sample_limit must be greater than 0")
+
+    for column in [*legacy_key_columns, *resolved_bq_key_columns]:
+        _validate_identifier(column, "key_column")
+
+    return CompatibilityAuditPlan(
+        project_id=project_id,
+        dataset=dataset,
+        legacy_csv_path=legacy_csv_path,
+        bq_table=bq_table,
+        legacy_key_columns=tuple(legacy_key_columns),
+        bq_key_columns=tuple(resolved_bq_key_columns),
+        temp_table=temp_table,
+        sample_limit=sample_limit,
+    )
+
+
 def render_sql_template(sql_text: str, *, project_id: str, dataset: str) -> str:
     _validate_identifier(project_id, "project_id", allow_dash=True)
     _validate_identifier(dataset, "dataset")
     return sql_text.replace("${PROJECT_ID}", project_id).replace("${DATASET}", dataset)
+
+
+def render_compatibility_audit_sql(plan: CompatibilityAuditPlan) -> str:
+    legacy_key = _key_expression("legacy", plan.legacy_key_columns)
+    bq_key = _key_expression("mart", plan.bq_key_columns)
+    return f"""
+with
+legacy as (
+  select
+    {legacy_key} as compat_key
+  from `{plan.temp_table_id}` as legacy
+),
+mart as (
+  select
+    {bq_key} as compat_key
+  from `{plan.bq_table_id}` as mart
+),
+legacy_counts as (
+  select count(*) as row_count, count(distinct compat_key) as distinct_key_count
+  from legacy
+),
+mart_counts as (
+  select count(*) as row_count, count(distinct compat_key) as distinct_key_count
+  from mart
+),
+missing_in_mart as (
+  select compat_key from legacy
+  except distinct
+  select compat_key from mart
+),
+missing_in_legacy as (
+  select compat_key from mart
+  except distinct
+  select compat_key from legacy
+)
+select
+  (select row_count from legacy_counts) as legacy_row_count,
+  (select row_count from mart_counts) as bq_row_count,
+  (select distinct_key_count from legacy_counts) as legacy_distinct_key_count,
+  (select distinct_key_count from mart_counts) as bq_distinct_key_count,
+  (select count(*) from missing_in_mart) as missing_in_bq_count,
+  (select count(*) from missing_in_legacy) as missing_in_legacy_count,
+  array(
+    select compat_key from missing_in_mart
+    order by compat_key
+    limit {plan.sample_limit}
+  ) as missing_in_bq_sample,
+  array(
+    select compat_key from missing_in_legacy
+    order by compat_key
+    limit {plan.sample_limit}
+  ) as missing_in_legacy_sample
+""".strip()
 
 
 def build_recent_review_serp_targets_sql(
@@ -312,6 +427,47 @@ def export_table_to_gcs_csv(plan: CsvExportPlan) -> str:
     return extract_job.job_id
 
 
+def run_compatibility_audit(plan: CompatibilityAuditPlan) -> dict[str, Any]:
+    try:
+        from google.cloud import bigquery
+    except ImportError as exc:
+        raise RuntimeError(
+            "google-cloud-bigquery is required. Install with: pip install .[gcp]"
+        ) from exc
+
+    client = bigquery.Client(project=plan.project_id)
+    job_config = bigquery.LoadJobConfig(
+        source_format=bigquery.SourceFormat.CSV,
+        skip_leading_rows=1,
+        autodetect=True,
+        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+    )
+    with plan.legacy_csv_path.open("rb") as csv_file:
+        load_job = client.load_table_from_file(csv_file, plan.temp_table_id, job_config=job_config)
+    load_job.result()
+
+    rows = list(client.query(render_compatibility_audit_sql(plan)).result())
+    if len(rows) != 1:
+        raise RuntimeError(f"compatibility audit expected one summary row, got {len(rows)}")
+
+    row = rows[0]
+    return {
+        "legacy_csv": str(plan.legacy_csv_path),
+        "legacy_temp_table": plan.temp_table_id,
+        "bq_table": plan.bq_table_id,
+        "legacy_key_columns": list(plan.legacy_key_columns),
+        "bq_key_columns": list(plan.bq_key_columns),
+        "legacy_row_count": int(row["legacy_row_count"]),
+        "bq_row_count": int(row["bq_row_count"]),
+        "legacy_distinct_key_count": int(row["legacy_distinct_key_count"]),
+        "bq_distinct_key_count": int(row["bq_distinct_key_count"]),
+        "missing_in_bq_count": int(row["missing_in_bq_count"]),
+        "missing_in_legacy_count": int(row["missing_in_legacy_count"]),
+        "missing_in_bq_sample": list(row["missing_in_bq_sample"]),
+        "missing_in_legacy_sample": list(row["missing_in_legacy_sample"]),
+    }
+
+
 def query_recent_review_serp_targets(
     *,
     project_id: str,
@@ -352,3 +508,10 @@ def _validate_identifier(value: str, name: str, *, allow_dash: bool = False) -> 
         pattern = r"^[A-Za-z_][A-Za-z0-9_-]*$"
     if not re.match(pattern, value):
         raise ValueError(f"{name} is not a valid BigQuery identifier: {value}")
+
+
+def _key_expression(alias: str, columns: tuple[str, ...]) -> str:
+    if len(columns) == 1:
+        return f"cast({alias}.{columns[0]} as string)"
+    fields = ", ".join(f"{alias}.{column} as {column}" for column in columns)
+    return f"to_json_string(struct({fields}))"

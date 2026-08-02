@@ -1,0 +1,134 @@
+name: v2 compatibility audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: BigQuery project id
+        required: true
+      dataset:
+        description: BigQuery dataset
+        required: true
+      legacy_csv_path:
+        description: Path under mememori8888/googlemap, for example results/dental_reviews.csv
+        required: true
+        default: results/dental_reviews.csv
+      bq_table:
+        description: BigQuery mart table to compare
+        required: true
+        default: fact_reviews
+        type: choice
+        options:
+          - fact_reviews
+          - dim_facilities
+          - fact_review_relevance_ranks
+      legacy_key_columns:
+        description: Comma-separated CSV key columns, for example fid,review_id
+        required: true
+        default: review_id
+      bq_key_columns:
+        description: Optional comma-separated BigQuery key columns; defaults to legacy_key_columns
+        required: false
+        default: ""
+      sample_limit:
+        description: Number of missing key samples to include
+        required: false
+        default: "20"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
+    steps:
+      - name: Checkout v2
+        uses: actions/checkout@v4
+
+      - name: Checkout private data
+        uses: actions/checkout@v4
+        with:
+          repository: mememori8888/googlemap
+          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          path: private-data
+          sparse-checkout: |
+            settings
+            results
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[gcp]"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ env.GCP_SERVICE_ACCOUNT_JSON }}
+
+      - name: Run compatibility audit
+        env:
+          LEGACY_KEY_COLUMNS: ${{ inputs.legacy_key_columns }}
+          BQ_KEY_COLUMNS: ${{ inputs.bq_key_columns }}
+        run: |
+          set -euo pipefail
+          legacy_args=()
+          IFS=',' read -ra legacy_columns <<< "$LEGACY_KEY_COLUMNS"
+          for column in "${legacy_columns[@]}"; do
+            column="$(echo "$column" | xargs)"
+            if [[ -n "$column" ]]; then
+              legacy_args+=(--legacy-key-column "$column")
+            fi
+          done
+
+          bq_args=()
+          if [[ -n "$BQ_KEY_COLUMNS" ]]; then
+            IFS=',' read -ra bq_columns <<< "$BQ_KEY_COLUMNS"
+            for column in "${bq_columns[@]}"; do
+              column="$(echo "$column" | xargs)"
+              if [[ -n "$column" ]]; then
+                bq_args+=(--bq-key-column "$column")
+              fi
+            done
+          fi
+
+          elt-bigquery audit-csv-compat \
+            --project-id "${{ inputs.project_id }}" \
+            --dataset "${{ inputs.dataset }}" \
+            --legacy-csv "private-data/${{ inputs.legacy_csv_path }}" \
+            --bq-table "${{ inputs.bq_table }}" \
+            "${legacy_args[@]}" \
+            "${bq_args[@]}" \
+            --sample-limit "${{ inputs.sample_limit }}" \
+            --output work/compatibility-audit.json
+
+      - name: Summarize
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          result = json.load(open("work/compatibility-audit.json", encoding="utf-8"))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("## v2 compatibility audit\n")
+              summary.write(f"- Legacy CSV: `{result['legacy_csv']}`\n")
+              summary.write(f"- BigQuery table: `{result['bq_table']}`\n")
+              summary.write(f"- Legacy rows: {result['legacy_row_count']}\n")
+              summary.write(f"- BigQuery rows: {result['bq_row_count']}\n")
+              summary.write(f"- Legacy distinct keys: {result['legacy_distinct_key_count']}\n")
+              summary.write(f"- BigQuery distinct keys: {result['bq_distinct_key_count']}\n")
+              summary.write(f"- Missing in BigQuery: {result['missing_in_bq_count']}\n")
+              summary.write(f"- Missing in legacy CSV: {result['missing_in_legacy_count']}\n")
+          PY
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: compatibility-audit
+          path: work/compatibility-audit.json

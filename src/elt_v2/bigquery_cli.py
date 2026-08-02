@@ -7,6 +7,7 @@ from pathlib import Path
 from elt_v2.bigquery_loader import (
     TRANSFORM_SQL_FILES,
     build_csv_export_plan,
+    build_compatibility_audit_plan,
     build_recent_review_serp_targets_sql,
     build_raw_load_plan,
     export_table_to_gcs_csv,
@@ -15,6 +16,7 @@ from elt_v2.bigquery_loader import (
     render_sql_template,
     replay_gcs_raw_object_to_bigquery,
     query_recent_review_serp_targets,
+    run_compatibility_audit,
     run_sql_file,
     run_sql_files,
 )
@@ -62,6 +64,21 @@ def main(argv: list[str] | None = None) -> int:
     export_parser.add_argument("--dataset", required=True)
     export_parser.add_argument("--table", required=True)
     export_parser.add_argument("--destination-uri", required=True)
+
+    audit_parser = subparsers.add_parser(
+        "audit-csv-compat",
+        help="Compare a legacy CSV with a BigQuery mart table using count and key-diff SQL.",
+    )
+    audit_parser.add_argument("--project-id", required=True)
+    audit_parser.add_argument("--dataset", required=True)
+    audit_parser.add_argument("--legacy-csv", required=True, type=Path)
+    audit_parser.add_argument("--bq-table", required=True)
+    audit_parser.add_argument("--legacy-key-column", action="append", required=True)
+    audit_parser.add_argument("--bq-key-column", action="append")
+    audit_parser.add_argument("--temp-table", default="_compat_legacy_csv_audit")
+    audit_parser.add_argument("--sample-limit", type=int, default=20)
+    audit_parser.add_argument("--output", type=Path)
+    audit_parser.add_argument("--dry-run-sql", action="store_true")
 
     targets_parser = subparsers.add_parser(
         "build-serp-targets",
@@ -155,6 +172,31 @@ def main(argv: list[str] | None = None) -> int:
                 indent=2,
             )
         )
+        return 0
+
+    if args.command == "audit-csv-compat":
+        plan = build_compatibility_audit_plan(
+            project_id=args.project_id,
+            dataset=args.dataset,
+            legacy_csv_path=args.legacy_csv,
+            bq_table=args.bq_table,
+            legacy_key_columns=args.legacy_key_column,
+            bq_key_columns=args.bq_key_column,
+            temp_table=args.temp_table,
+            sample_limit=args.sample_limit,
+        )
+        if args.dry_run_sql:
+            from elt_v2.bigquery_loader import render_compatibility_audit_sql
+
+            print(render_compatibility_audit_sql(plan))
+            return 0
+
+        result = run_compatibility_audit(plan)
+        encoded = json.dumps(result, ensure_ascii=False, indent=2)
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(encoded + "\n", encoding="utf-8")
+        print(encoded)
         return 0
 
     if args.command == "build-serp-targets":

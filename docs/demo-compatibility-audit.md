@@ -12,6 +12,7 @@ Source inspected: `mememori8888/demo` at `e6a01b3` (`Build canonical Google Maps
 | Raw artifacts | Preserved as raw object artifacts, with optional GCS upload |
 | CSV output compatibility | Implemented as BigQuery extract jobs to GCS via `.github/workflows/bigquery-export.yml` |
 | BigQuery transforms | Implemented via `sql/bigquery/*.sql` and `.github/workflows/bigquery-transform.yml` |
+| Legacy CSV vs v2 mart verification | Implemented via `.github/workflows/compatibility-audit.yml` and `elt-bigquery audit-csv-compat` |
 
 ## Still thin or intentionally changed
 
@@ -25,4 +26,4 @@ Source inspected: `mememori8888/demo` at `e6a01b3` (`Build canonical Google Maps
 
 ## Next compatibility targets
 
-1. Verify the BigQuery recent-review target path against a real BrightData run and compare row counts with the old CSV outputs.
+1. Run `.github/workflows/compatibility-audit.yml` after a real BrightData run and archive the generated report with the release evidence.
