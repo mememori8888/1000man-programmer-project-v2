@@ -65,3 +65,18 @@ def test_rejects_empty_csv_header(tmp_path):
             source_run_id="run-1",
             dataset_kind="reviews",
         )
+
+
+def test_builds_serp_relevance_raw_object(tmp_path):
+    input_path = tmp_path / "serp.json"
+    input_path.write_text('{"request":{"url":"https://example.com"},"response":{"ok":true}}', encoding="utf-8")
+
+    raw_object = build_raw_object(
+        input_path=input_path,
+        source_run_id="serp-run",
+        dataset_kind="serp_relevance",
+        extracted_at=datetime(2026, 8, 3, 1, 2, 3, tzinfo=timezone.utc),
+    )
+
+    assert raw_object.manifest["dataset_kind"] == "serp_relevance"
+    assert raw_object.object_name.startswith("raw/serp_relevance/2026/08/03/source_run_id=serp-run/")

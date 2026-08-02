@@ -1,0 +1,121 @@
+name: SERP relevance raw extract
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Google Maps or reviews URL to fetch through BrightData SERP
+        required: true
+      zone:
+        description: BrightData SERP zone name
+        required: false
+        default: serp_api2
+      source_run_id:
+        description: Source run id for raw storage
+        required: false
+        default: manual-serp
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    env:
+      GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[gcp]"
+
+      - name: Authenticate to Google Cloud
+        if: env.GCP_SERVICE_ACCOUNT_JSON != ''
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ env.GCP_SERVICE_ACCOUNT_JSON }}
+
+      - name: Run SERP request
+        run: |
+          mkdir -p work
+          elt-brightdata run-serp \
+            --url "${{ inputs.url }}" \
+            --zone-name "${{ inputs.zone }}" \
+            --output work/serp-response.json
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          response = json.loads(Path("work/serp-response.json").read_text(encoding="utf-8-sig"))
+          envelope = {
+              "request": {
+                  "url": os.environ["SERP_URL"],
+                  "zone": os.environ["SERP_ZONE"],
+              },
+              "response": response,
+          }
+          Path("work/serp-raw-envelope.json").write_text(
+              json.dumps(envelope, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+        env:
+          BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
+          SERP_URL: ${{ inputs.url }}
+          SERP_ZONE: ${{ inputs.zone }}
+
+      - name: Store raw object locally
+        id: local
+        run: |
+          elt-raw-write \
+            --input work/serp-raw-envelope.json \
+            --source-run-id "${{ inputs.source_run_id }}-${{ github.run_id }}" \
+            --dataset-kind serp_relevance \
+            --local-output-root work/raw-output | tee work/raw-write-result.json
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path("work/raw-write-result.json").read_text(encoding="utf-8"))
+          manifest = result["manifest"]
+          local_path = result["local_path"]
+          print(f"object_name={manifest['object_name']}")
+          print(f"manifest_path={local_path}.manifest.json")
+          print(f"local_path={local_path}")
+          PY
+
+      - name: Upload raw object to GCS
+        if: vars.ELT_RAW_GCS_BUCKET != ''
+        run: |
+          elt-raw-write \
+            --input work/serp-raw-envelope.json \
+            --source-run-id "${{ inputs.source_run_id }}-${{ github.run_id }}" \
+            --dataset-kind serp_relevance \
+            --gcs-bucket "${{ vars.ELT_RAW_GCS_BUCKET }}"
+
+      - name: Load raw row into BigQuery
+        if: vars.ELT_RAW_GCS_BUCKET != '' && vars.ELT_BIGQUERY_PROJECT_ID != '' && vars.ELT_BIGQUERY_DATASET != ''
+        run: |
+          elt-bigquery load-raw \
+            --manifest "${{ steps.local.outputs.manifest_path }}" \
+            --payload-file "${{ steps.local.outputs.local_path }}" \
+            --project-id "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" \
+            --dataset "${{ vars.ELT_BIGQUERY_DATASET }}" \
+            --source-uri "gs://${{ vars.ELT_RAW_GCS_BUCKET }}/${{ steps.local.outputs.object_name }}"
+
+      - name: Upload SERP raw artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: serp-relevance-raw-${{ github.run_id }}
+          path: work/
+          if-no-files-found: error
+          retention-days: 14

@@ -8,7 +8,12 @@ from typing import Any
 from urllib.parse import unquote
 
 
-VALID_DATASET_KINDS = {"reviews", "facilities"}
+VALID_DATASET_KINDS = {"reviews", "facilities", "serp_relevance"}
+RAW_TABLE_BY_DATASET_KIND = {
+    "reviews": "raw_reviews",
+    "facilities": "raw_facilities",
+    "serp_relevance": "raw_serp_responses",
+}
 TRANSFORM_SQL_FILES = [
     "sql/bigquery/001_create_raw_tables.sql",
     "sql/bigquery/002_create_mart_tables.sql",
@@ -73,7 +78,7 @@ def build_raw_load_plan(
     _validate_identifier(project_id, "project_id", allow_dash=True)
     _validate_identifier(dataset, "dataset")
 
-    table = "raw_reviews" if dataset_kind == "reviews" else "raw_facilities"
+    table = RAW_TABLE_BY_DATASET_KIND[dataset_kind]
     raw_object_uri = source_uri or str(manifest.get("gcs_uri") or manifest.get("raw_object_uri") or "")
     if not raw_object_uri:
         object_name = str(manifest.get("object_name", "")).strip()

@@ -57,6 +57,25 @@ def test_builds_facilities_raw_load_plan_with_explicit_source_uri():
     assert plan.source_uri == "gs://another-bucket/raw/facilities/file.csv"
 
 
+def test_builds_serp_relevance_raw_load_plan():
+    manifest = {
+        "source_run_id": "serp-1",
+        "dataset_kind": "serp_relevance",
+        "object_name": "raw/serp_relevance/file.json",
+        "sha256": "abc123",
+        "extracted_at": "2026-08-03T00:00:00Z",
+    }
+
+    plan = build_raw_load_plan(
+        manifest=manifest,
+        project_id="project-123",
+        dataset="brightdata_raw",
+        source_uri="gs://raw-bucket/raw/serp_relevance/file.json",
+    )
+
+    assert plan.table_id == "project-123.brightdata_raw.raw_serp_responses"
+
+
 def test_rejects_non_gcs_uri():
     manifest = {
         "source_run_id": "run-1",

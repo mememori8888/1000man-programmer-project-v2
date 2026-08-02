@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 
-SUPPORTED_KINDS = {"reviews", "facilities"}
+SUPPORTED_KINDS = {"reviews", "facilities", "serp_relevance"}
 
 
 @dataclass(frozen=True)

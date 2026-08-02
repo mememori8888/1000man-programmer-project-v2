@@ -12,6 +12,7 @@ This project moves heavy matching and deduplication out of Python and into BigQu
 - `elt-brightdata run-dataset` runs the BrightData Dataset API `trigger -> progress -> snapshot` flow and writes raw JSON output to a file.
 - `elt-brightdata run-serp` preserves the SERP API request path used by the existing demo for focused diagnostics and later relevance-rank work.
 - `.github/workflows/serp-reviews-smoke.yml` exposes that SERP diagnostic path as a manual workflow.
+- `.github/workflows/serp-relevance-extract.yml` stores SERP responses as `serp_relevance` raw objects and loads them into `raw_serp_responses`.
 - `.github/workflows/brightdata-extract.yml` keeps the BrightData result file inside the same job, stores it as a raw object, and only passes small metadata through GitHub outputs.
 - `elt-bigquery replay-gcs-raw` and `.github/workflows/raw-object-replay.yml` replay an existing GCS raw object plus its manifest into BigQuery without rerunning BrightData.
 - `elt-bigquery export-csv` and `.github/workflows/bigquery-export.yml` provide the compatibility path for users who still need CSV output from `fact_reviews` or `dim_facilities`.
@@ -21,6 +22,7 @@ This project moves heavy matching and deduplication out of Python and into BigQu
 GitHub Actions can call the extractor after each BrightData job and upload raw files to GCS. When `ELT_RAW_GCS_BUCKET`, `ELT_BIGQUERY_PROJECT_ID`, and `ELT_BIGQUERY_DATASET` repository variables are configured, the IssueOps and BrightData workflows also insert one metadata-rich raw row into BigQuery.
 
 The current BigQuery contract is intentionally simple: one raw object becomes one row with `raw_payload`, `source_run_id`, `raw_object_uri`, `payload_sha256`, and timestamps. Parsing into `raw_reviews_parsed`, `dim_facilities`, and `fact_reviews` is handled by SQL files in `sql/bigquery`.
+SERP relevance responses use the same contract through `raw_serp_responses`; the rank extraction transform can evolve in SQL without changing the extractor.
 
 CSV compatibility output is also handled by BigQuery, not Python loops. BigQuery extract jobs write CSV shards directly to GCS, which keeps runner memory and disk usage independent of table size.
 

@@ -28,8 +28,18 @@ def test_serp_smoke_workflow_uses_brightdata_serp_cli():
 
     assert "elt-brightdata run-serp" in workflow_text
     assert "BRIGHTDATA_API_TOKEN" in workflow_text
-    assert "--zone" in workflow_text
+    assert "--zone-name" in workflow_text
     assert "upload-artifact" in workflow_text
+
+
+def test_serp_relevance_extract_workflow_stores_raw_response():
+    workflow_text = Path(".github/workflows/serp-relevance-extract.yml").read_text(encoding="utf-8")
+
+    assert "elt-brightdata run-serp" in workflow_text
+    assert "--zone-name" in workflow_text
+    assert "--dataset-kind serp_relevance" in workflow_text
+    assert "elt-bigquery load-raw" in workflow_text
+    assert "ELT_RAW_GCS_BUCKET" in workflow_text
 
 
 def test_raw_object_replay_workflow_uses_gcs_raw_replay_cli():

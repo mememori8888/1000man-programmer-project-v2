@@ -20,7 +20,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dataset-kind",
         required=True,
-        choices=["reviews", "facilities"],
+        choices=["reviews", "facilities", "serp_relevance"],
         help="Raw dataset category",
     )
     parser.add_argument("--local-output-root", type=Path, help="Write under this local root")

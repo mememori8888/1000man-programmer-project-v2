@@ -37,7 +37,7 @@ jobs:
         run: |
           elt-brightdata run-serp \
             --url "${{ inputs.url }}" \
-            --zone "${{ inputs.zone }}" \
+            --zone-name "${{ inputs.zone }}" \
             --output serp-smoke-result.json
 
       - name: Upload SERP diagnostic artifact
