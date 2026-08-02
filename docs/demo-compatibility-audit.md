@@ -44,3 +44,17 @@ v2 を「demo 機能を損なわずに置き換えられる」と判断する前
 | Exceptions | 差分が残る場合は、旧 demo の仕様差、v2 の意図的変更、追跡 Issue URL を明記する |
 
 このチェックリストは削除判定ではなく、移行判定のためのものです。旧ファイルや旧 workflow は、上記証跡で代替機能が確認できるまで残します。
+
+証跡 JSON のひな形は次のコマンドで作れます。
+
+```powershell
+$env:PYTHONPATH='src'
+python -m elt_v2.evidence_cli template --output docs/release-evidence.json
+```
+
+実 run ID、Issue URL、GCS URI、artifact 名を埋めたら、次のコマンドで必須項目の抜けを確認します。
+
+```powershell
+$env:PYTHONPATH='src'
+python -m elt_v2.evidence_cli validate --file docs/release-evidence.json
+```

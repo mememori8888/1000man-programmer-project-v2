@@ -20,6 +20,7 @@ dev = [
 [project.scripts]
 elt-bigquery = "elt_v2.bigquery_cli:main"
 elt-brightdata = "elt_v2.brightdata_cli:main"
+elt-evidence = "elt_v2.evidence_cli:main"
 elt-raw-write = "elt_v2.cli:main"
 
 [build-system]

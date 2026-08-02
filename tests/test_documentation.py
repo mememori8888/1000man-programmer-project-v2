@@ -27,3 +27,5 @@ def test_demo_compatibility_doc_lists_required_release_evidence():
     assert "fail_on_diff: true" in doc
     assert "compatibility-audit.json" in doc
     assert "旧ファイルや旧 workflow" in doc
+    assert "elt_v2.evidence_cli template" in doc
+    assert "elt_v2.evidence_cli validate" in doc
