@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from elt_v2.bigquery_loader import (
+    TRANSFORM_SQL_FILES,
     build_raw_load_plan,
     load_manifest_file,
     load_raw_payload_to_bigquery,
@@ -40,6 +41,9 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.add_argument("--project-id", required=True)
     run_parser.add_argument("--dataset", required=True)
 
+    list_parser = subparsers.add_parser("list-sql", help="List managed BigQuery SQL files.")
+    list_parser.set_defaults(list_sql=True)
+
     args = parser.parse_args(argv)
 
     if args.command == "plan-raw-load":
@@ -51,6 +55,10 @@ def main(argv: list[str] | None = None) -> int:
             source_uri=args.source_uri,
         )
         print(json.dumps(plan.__dict__, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "list-sql":
+        print(json.dumps({"sql_files": TRANSFORM_SQL_FILES}, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "load-raw":

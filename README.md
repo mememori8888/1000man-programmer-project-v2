@@ -198,7 +198,7 @@ where row_num = 1;
 - `.github/workflows/raw-elt-ingest.yml`: IssueOps または手動実行から raw object と manifest を生成する。
 - `.github/workflows/bigquery-transform.yml`: BigQuery SQL を手動実行する変換 workflow。
 - `docs/webapp/`: v2 repo に Issue を作成する軽量 WebApp。
-- `sql/bigquery/`: BigQuery の raw table、mart table、レビュー重複排除 SQL。
+- `sql/bigquery/`: BigQuery の raw table、raw payload 解析、mart table、レビュー重複排除 SQL。
 - `tests/`: raw object 生成と manifest 保存の単体テスト。
 
 ローカル検証例:

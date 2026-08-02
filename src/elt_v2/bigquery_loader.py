@@ -8,6 +8,13 @@ from typing import Any
 
 
 VALID_DATASET_KINDS = {"reviews", "facilities"}
+TRANSFORM_SQL_FILES = [
+    "sql/bigquery/001_create_raw_tables.sql",
+    "sql/bigquery/002_create_mart_tables.sql",
+    "sql/bigquery/010_parse_raw_reviews.sql",
+    "sql/bigquery/011_parse_raw_facilities.sql",
+    "sql/bigquery/101_deduplicate_reviews.sql",
+]
 
 
 @dataclass(frozen=True)

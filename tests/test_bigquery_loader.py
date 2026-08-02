@@ -5,6 +5,7 @@ import json
 import pytest
 
 from elt_v2.bigquery_loader import (
+    TRANSFORM_SQL_FILES,
     build_raw_load_plan,
     build_raw_table_row,
     load_manifest_file,
@@ -117,3 +118,11 @@ def test_load_manifest_file_accepts_utf8_bom(tmp_path):
     manifest_path.write_text('{"dataset_kind":"reviews"}', encoding="utf-8-sig")
 
     assert load_manifest_file(manifest_path)["dataset_kind"] == "reviews"
+
+
+def test_transform_sql_file_registry_includes_parse_steps():
+    assert "sql/bigquery/010_parse_raw_reviews.sql" in TRANSFORM_SQL_FILES
+    assert "sql/bigquery/011_parse_raw_facilities.sql" in TRANSFORM_SQL_FILES
+    assert TRANSFORM_SQL_FILES.index("sql/bigquery/010_parse_raw_reviews.sql") < TRANSFORM_SQL_FILES.index(
+        "sql/bigquery/101_deduplicate_reviews.sql"
+    )
