@@ -14,6 +14,7 @@ RAW_TABLE_BY_DATASET_KIND = {
     "facilities": "raw_facilities",
     "serp_relevance": "raw_serp_responses",
 }
+VALID_MART_TABLES = {"fact_reviews", "dim_facilities", "fact_review_relevance_ranks"}
 TRANSFORM_SQL_FILES = [
     "sql/bigquery/001_create_raw_tables.sql",
     "sql/bigquery/002_create_mart_tables.sql",
@@ -138,6 +139,7 @@ def build_csv_export_plan(
     _validate_identifier(project_id, "project_id", allow_dash=True)
     _validate_identifier(dataset, "dataset")
     _validate_identifier(table, "table")
+    _validate_mart_table(table)
     destination_uri = resolve_csv_export_destination_uri(
         destination_uri=destination_uri,
         gcs_bucket=gcs_bucket,
@@ -198,6 +200,7 @@ def build_compatibility_audit_plan(
     _validate_identifier(project_id, "project_id", allow_dash=True)
     _validate_identifier(dataset, "dataset")
     _validate_identifier(bq_table, "bq_table")
+    _validate_mart_table(bq_table)
     _validate_identifier(temp_table, "temp_table")
     if not legacy_csv_path.exists():
         raise ValueError(f"legacy_csv_path does not exist: {legacy_csv_path}")
@@ -595,6 +598,11 @@ def _validate_identifier(value: str, name: str, *, allow_dash: bool = False) -> 
         pattern = r"^[A-Za-z_][A-Za-z0-9_-]*$"
     if not re.match(pattern, value):
         raise ValueError(f"{name} is not a valid BigQuery identifier: {value}")
+
+
+def _validate_mart_table(table: str) -> None:
+    if table not in VALID_MART_TABLES:
+        raise ValueError(f"table must be one of: {', '.join(sorted(VALID_MART_TABLES))}")
 
 
 def _key_expression(alias: str, columns: tuple[str, ...]) -> str:

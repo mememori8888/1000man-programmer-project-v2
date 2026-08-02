@@ -6,6 +6,7 @@ import pytest
 
 from elt_v2.bigquery_loader import (
     TRANSFORM_SQL_FILES,
+    VALID_MART_TABLES,
     build_compatibility_audit_plan,
     build_csv_export_plan,
     build_recent_review_serp_targets_sql,
@@ -173,6 +174,17 @@ def test_builds_csv_export_plan():
     assert plan.destination_uri == "gs://export-bucket/reviews/fact_reviews-*.csv"
 
 
+def test_csv_export_plan_only_allows_standard_mart_tables():
+    assert VALID_MART_TABLES == {"fact_reviews", "dim_facilities", "fact_review_relevance_ranks"}
+    with pytest.raises(ValueError, match="table must be one of"):
+        build_csv_export_plan(
+            project_id="project-123",
+            dataset="brightdata_raw",
+            table="raw_reviews",
+            destination_uri="gs://export-bucket/raw_reviews-*.csv",
+        )
+
+
 def test_resolves_legacy_csv_export_destination_uri():
     assert (
         resolve_csv_export_destination_uri(
@@ -225,6 +237,20 @@ def test_builds_compatibility_audit_sql(tmp_path):
     assert "missing_in_bq_count" in sql
     assert "missing_in_legacy_count" in sql
     assert "limit 5" in sql
+
+
+def test_compatibility_audit_only_allows_standard_mart_tables(tmp_path):
+    legacy_csv = tmp_path / "legacy.csv"
+    legacy_csv.write_text("review_id\nr1\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="table must be one of"):
+        build_compatibility_audit_plan(
+            project_id="project-123",
+            dataset="brightdata_raw",
+            legacy_csv_path=legacy_csv,
+            bq_table="raw_reviews",
+            legacy_key_columns=["review_id"],
+        )
 
 
 def test_detects_compatibility_audit_diff():
