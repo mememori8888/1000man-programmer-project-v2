@@ -60,3 +60,4 @@ python -m elt_v2.evidence_cli validate --file docs/release-evidence.json
 ```
 
 GitHub Actions 上で同じ検証を残す場合は、`v2 release evidence validation` workflow の `evidence_json` に完成済み JSON を貼り付けます。検証結果は `release-evidence-validation` artifact と workflow Summary に保存されます。
+PowerShell から `gh workflow run --json` で投入する場合は、`/承認` などの日本語を含む JSON が端末の文字コードで化けないように、ブラウザの workflow 画面から貼り付けるか、Python の `json.dumps(..., ensure_ascii=True)` で Unicode escape 化した文字列を渡してください。
