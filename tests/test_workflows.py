@@ -213,6 +213,12 @@ def test_raw_object_replay_workflow_uses_gcs_raw_replay_cli():
     assert "run_transform" in workflow_text
     assert "--raw-uri" in workflow_text
     assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text
+    assert "mkdir -p work" in workflow_text
+    assert "work/replay-result.json" in workflow_text
+    assert "Upload replay artifact" in workflow_text
+    assert "raw-object-replay-${{ github.run_id }}" in workflow_text
+    assert "BigQuery raw table" in workflow_text
+    assert "BigQuery load job" in workflow_text
     assert "GITHUB_STEP_SUMMARY" in workflow_text
 
 

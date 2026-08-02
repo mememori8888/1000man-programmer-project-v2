@@ -63,6 +63,7 @@ jobs:
       - name: Replay raw object into BigQuery
         id: replay
         run: |
+          mkdir -p work
           args=(
             replay-gcs-raw
             --raw-uri "${{ inputs.raw_uri }}"
@@ -72,7 +73,7 @@ jobs:
           if [ -n "${{ inputs.manifest_uri }}" ]; then
             args+=(--manifest-uri "${{ inputs.manifest_uri }}")
           fi
-          elt-bigquery "${args[@]}" | tee work-replay-result.json
+          elt-bigquery "${args[@]}" | tee work/replay-result.json
 
       - name: Run BigQuery transforms
         if: inputs.run_transform == 'true'
@@ -81,16 +82,45 @@ jobs:
             --project-id "${{ inputs.project_id }}" \
             --dataset "${{ inputs.dataset }}"
 
+      - name: Upload replay artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-object-replay-${{ github.run_id }}
+          path: work/replay-result.json
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Summary
         if: always()
+        env:
+          RAW_URI: ${{ inputs.raw_uri }}
+          MANIFEST_URI: ${{ inputs.manifest_uri }}
+          PROJECT_ID: ${{ inputs.project_id }}
+          DATASET: ${{ inputs.dataset }}
+          RUN_TRANSFORM: ${{ inputs.run_transform }}
+          ARTIFACT_NAME: raw-object-replay-${{ github.run_id }}
         run: |
-          {
-            echo "## Raw object replay"
-            echo "- raw_uri: \`${{ inputs.raw_uri }}\`"
-            if [ -n "${{ inputs.manifest_uri }}" ]; then
-              echo "- manifest_uri: \`${{ inputs.manifest_uri }}\`"
-            fi
-            echo "- BigQuery dataset: \`${{ inputs.project_id }}.${{ inputs.dataset }}\`"
-            echo "- BigQuery raw schema: \`ensured\`"
-            echo "- BigQuery transform: \`${{ inputs.run_transform }}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          result_path = Path("work/replay-result.json")
+          result = json.loads(result_path.read_text(encoding="utf-8")) if result_path.exists() else {}
+          print("## Raw object replay")
+          print(f"- raw_uri: `{os.environ['RAW_URI']}`")
+          manifest_uri = os.environ["MANIFEST_URI"]
+          if manifest_uri:
+              print(f"- manifest_uri: `{manifest_uri}`")
+          elif result.get("manifest_uri"):
+              print(f"- manifest_uri: `{result['manifest_uri']}`")
+          print(f"- BigQuery dataset: `{os.environ['PROJECT_ID']}.{os.environ['DATASET']}`")
+          if result.get("table_id"):
+              print(f"- BigQuery raw table: `{result['table_id']}`")
+          if result.get("job_id"):
+              print(f"- BigQuery load job: `{result['job_id']}`")
+          print("- BigQuery raw schema: `ensured`")
+          print(f"- BigQuery transform: `{os.environ['RUN_TRANSFORM']}`")
+          if result_path.exists():
+              print(f"- artifact: `{os.environ['ARTIFACT_NAME']}`")
+          PY
