@@ -1,5 +1,6 @@
 const GITHUB_OWNER = "mememori8888";
 const GITHUB_REPO = "1000man-programmer-project-v2";
+const FILE_PRESETS_URL = "file-presets.json";
 
 const commandMap = {
   facility: "/run-facility",
@@ -19,9 +20,68 @@ const form = document.getElementById("jobForm");
 const preview = document.getElementById("preview");
 const workflow = document.getElementById("workflow");
 const copyButton = document.getElementById("copyButton");
+let filePresets = { settings: [], results: [] };
 
 function fieldValue(id) {
   return document.getElementById(id).value.trim();
+}
+
+function hasPurpose(entry, purpose) {
+  return Array.isArray(entry.purposes) && entry.purposes.includes(purpose);
+}
+
+function pathsForPurpose(group, purpose) {
+  return (filePresets[group] || [])
+    .filter((entry) => hasPurpose(entry, purpose))
+    .map((entry) => entry.path)
+    .filter(Boolean);
+}
+
+function uniquePaths(paths) {
+  return [...new Set(paths)].sort((left, right) => left.localeCompare(right, "ja"));
+}
+
+function populateDatalist(id, paths) {
+  const datalist = document.getElementById(id);
+  if (!datalist) return;
+
+  datalist.replaceChildren(
+    ...uniquePaths(paths).map((path) => {
+      const option = document.createElement("option");
+      option.value = path;
+      return option;
+    }),
+  );
+}
+
+async function loadFilePresets() {
+  try {
+    const response = await fetch(FILE_PRESETS_URL, { cache: "no-store" });
+    if (!response.ok) return;
+
+    const presets = await response.json();
+    filePresets = {
+      settings: Array.isArray(presets.settings) ? presets.settings : [],
+      results: Array.isArray(presets.results) ? presets.results : [],
+    };
+
+    populateDatalist("sequentialInputFiles", [
+      "results/dental_new.csv",
+      ...pathsForPurpose("results", "sequential_input"),
+      ...pathsForPurpose("results", "facility_output"),
+    ]);
+    populateDatalist("reviewOutputFiles", [
+      "results/dental_reviews.csv",
+      "results/dental_review.csv",
+      ...pathsForPurpose("results", "review_output"),
+    ]);
+    populateDatalist("summaryOutputFiles", [
+      "results/relevance_rank_summary.csv",
+      ...pathsForPurpose("results", "relevance_summary_output"),
+    ]);
+  } catch (error) {
+    console.warn("file presets could not be loaded", error);
+  }
 }
 
 function buildParams() {
@@ -120,3 +180,4 @@ copyButton.addEventListener("click", async () => {
 });
 
 refreshPreview();
+loadFilePresets();

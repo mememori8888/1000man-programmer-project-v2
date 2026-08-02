@@ -20,10 +20,9 @@ Source inspected: `mememori8888/demo` at `e6a01b3` (`Build canonical Google Maps
 | `reviews_recent_with_relevance.yml` SERP rank enrichment | SERP raw response storage, bounded batch orchestration, and BigQuery rank fact transform are implemented as the v2 foundation |
 | `serp_reviews_smoke.yml` diagnostics | Preserved via `.github/workflows/serp-reviews-smoke.yml` |
 | `recover-run-artifacts.yml` CSV batch recovery | Replaced by `.github/workflows/raw-object-replay.yml` for GCS raw object replay and BigQuery re-transform |
-| `generate-file-list.yml` / `docs/webapp/files.json` | v2 WebApp uses static defaults today; dynamic private-data file listing remains a compatibility gap |
+| `generate-file-list.yml` / `docs/webapp/files.json` | Replaced by `docs/webapp/file-presets.json`, a curated public-safe candidate list that preserves WebApp selection ergonomics without exposing private repository contents |
 | n8n local relevance workflow | Keep optional; do not make it part of the standard cloud path |
 
 ## Next compatibility targets
 
-1. Add dynamic file listing for WebApp inputs without exposing private repository contents publicly.
-2. Verify the BigQuery recent-review target path against a real BrightData run and compare row counts with the old CSV outputs.
+1. Verify the BigQuery recent-review target path against a real BrightData run and compare row counts with the old CSV outputs.

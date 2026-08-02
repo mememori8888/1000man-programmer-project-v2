@@ -1,0 +1,103 @@
+{
+  "settings": [
+    {
+      "name": "address.csv",
+      "path": "settings/address.csv",
+      "extension": ".csv",
+      "purposes": ["settings_csv", "address_input"]
+    },
+    {
+      "name": "exclude_gids.csv",
+      "path": "settings/exclude_gids.csv",
+      "extension": ".csv",
+      "purposes": ["settings_csv", "exclude_gids"]
+    },
+    {
+      "name": "settings.json",
+      "path": "settings/settings.json",
+      "extension": ".json",
+      "purposes": ["settings_json", "config"]
+    }
+  ],
+  "results": [
+    {
+      "name": "dental_new.csv",
+      "path": "results/dental_new.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "facility_output", "sequential_input"]
+    },
+    {
+      "name": "dental.csv",
+      "path": "results/dental.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "facility_output", "sequential_input"]
+    },
+    {
+      "name": "fid.csv",
+      "path": "results/fid.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "fid_input"]
+    },
+    {
+      "name": "dental_review.csv",
+      "path": "results/dental_review.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "review_output"]
+    },
+    {
+      "name": "dental_reviews.csv",
+      "path": "results/dental_reviews.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "review_output"]
+    },
+    {
+      "name": "add_data_marriage_kihon.csv",
+      "path": "results/add_data_marriage_kihon.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "facility_output", "sequential_input"]
+    },
+    {
+      "name": "add_marriage_kihon_reviews.csv",
+      "path": "results/add_marriage_kihon_reviews.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "review_output"]
+    },
+    {
+      "name": "funeral.csv",
+      "path": "results/funeral.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "facility_output", "sequential_input"]
+    },
+    {
+      "name": "funeral_review.csv",
+      "path": "results/funeral_review.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "review_output"]
+    },
+    {
+      "name": "care_roujin-home.csv",
+      "path": "results/care_roujin-home.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "facility_output", "sequential_input"]
+    },
+    {
+      "name": "care_roujin-home_reviews.csv",
+      "path": "results/care_roujin-home_reviews.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "review_output"]
+    },
+    {
+      "name": "relevance_rank_summary.csv",
+      "path": "results/relevance_rank_summary.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "relevance_summary_output"]
+    },
+    {
+      "name": "dental_relevance_rank_summary.csv",
+      "path": "results/dental_relevance_rank_summary.csv",
+      "extension": ".csv",
+      "purposes": ["results_csv", "relevance_summary_output"]
+    }
+  ],
+  "generated_by": "curated_public_v2_presets"
+}

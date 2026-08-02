@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 
@@ -107,3 +108,18 @@ def test_raw_ingest_workflow_writes_step_summary():
     assert "Raw ELT ingest" in workflow_text
     assert "GITHUB_STEP_SUMMARY" in workflow_text
     assert "GCS raw object" in workflow_text
+
+
+def test_webapp_uses_curated_public_file_presets():
+    app_text = Path("docs/webapp/app.js").read_text(encoding="utf-8")
+    index_text = Path("docs/webapp/index.html").read_text(encoding="utf-8")
+    presets = json.loads(Path("docs/webapp/file-presets.json").read_text(encoding="utf-8"))
+
+    assert "file-presets.json" in app_text
+    assert "api.github.com/repos" not in app_text
+    assert 'list="sequentialInputFiles"' in index_text
+    assert 'list="reviewOutputFiles"' in index_text
+    assert 'list="summaryOutputFiles"' in index_text
+    assert presets["generated_by"] == "curated_public_v2_presets"
+    assert any("sequential_input" in entry["purposes"] for entry in presets["results"])
+    assert any("review_output" in entry["purposes"] for entry in presets["results"])

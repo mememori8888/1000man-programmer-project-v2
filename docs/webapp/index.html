@@ -31,12 +31,12 @@
 
           <label>
             入力 CSV
-            <input id="csvFile" value="results/dental_new.csv">
+            <input id="csvFile" value="results/dental_new.csv" list="sequentialInputFiles">
           </label>
 
           <label>
             出力 CSV
-            <input id="outputFile" value="results/dental_reviews.csv">
+            <input id="outputFile" value="results/dental_reviews.csv" list="reviewOutputFiles">
           </label>
 
           <div class="grid">
@@ -83,9 +83,13 @@
             </label>
             <label>
               summary_file
-              <input id="summaryFile" value="results/relevance_rank_summary.csv">
+              <input id="summaryFile" value="results/relevance_rank_summary.csv" list="summaryOutputFiles">
             </label>
           </div>
+
+          <datalist id="sequentialInputFiles"></datalist>
+          <datalist id="reviewOutputFiles"></datalist>
+          <datalist id="summaryOutputFiles"></datalist>
 
           <div class="actions">
             <button type="submit">Issue を作成</button>
