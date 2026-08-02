@@ -1,0 +1,121 @@
+name: v2 release evidence validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      evidence_json:
+        description: Release evidence JSON produced from docs/demo-compatibility-audit.md
+        required: true
+      fail_on_warning:
+        description: Fail when validator emits warnings
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Write evidence file
+        env:
+          EVIDENCE_JSON: ${{ inputs.evidence_json }}
+        run: |
+          mkdir -p work
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = json.loads(os.environ["EVIDENCE_JSON"])
+          Path("work/release-evidence.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Validate evidence
+        id: validate
+        continue-on-error: true
+        run: |
+          set +e
+          elt-evidence validate --file work/release-evidence.json | tee work/release-evidence-validation.json
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit "$code"
+
+      - name: Summary
+        if: always()
+        env:
+          FAIL_ON_WARNING: ${{ inputs.fail_on_warning }}
+          VALIDATE_EXIT_CODE: ${{ steps.validate.outputs.exit_code }}
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          result = json.loads(Path("work/release-evidence-validation.json").read_text(encoding="utf-8"))
+          print("## v2 release evidence validation")
+          print(f"- Result: `{'PASS' if result['valid'] else 'FAIL'}`")
+          print(f"- Validator exit code: `{os.environ.get('VALIDATE_EXIT_CODE', '')}`")
+          print(f"- Fail on warning: `{os.environ['FAIL_ON_WARNING']}`")
+          if result["errors"]:
+              print("")
+              print("### Errors")
+              for error in result["errors"]:
+                  print(f"- `{error}`")
+          if result["warnings"]:
+              print("")
+              print("### Warnings")
+              for warning in result["warnings"]:
+                  print(f"- `{warning}`")
+          print("")
+          print("- evidence artifact: `release-evidence-validation`")
+          PY
+
+      - name: Upload validation artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence-validation
+          path: |
+            work/release-evidence.json
+            work/release-evidence-validation.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Fail on invalid evidence
+        if: steps.validate.outputs.exit_code != '0'
+        run: |
+          echo "release evidence is incomplete"
+          exit 1
+
+      - name: Fail on warnings
+        if: inputs.fail_on_warning && steps.validate.outputs.exit_code == '0'
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          result = json.loads(Path("work/release-evidence-validation.json").read_text(encoding="utf-8"))
+          if result["warnings"]:
+              print("release evidence has warnings")
+              sys.exit(1)
+          PY

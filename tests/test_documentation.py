@@ -29,3 +29,5 @@ def test_demo_compatibility_doc_lists_required_release_evidence():
     assert "旧ファイルや旧 workflow" in doc
     assert "elt_v2.evidence_cli template" in doc
     assert "elt_v2.evidence_cli validate" in doc
+    assert "v2 release evidence validation" in doc
+    assert "release-evidence-validation" in doc

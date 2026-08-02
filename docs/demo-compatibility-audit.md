@@ -58,3 +58,5 @@ python -m elt_v2.evidence_cli template --output docs/release-evidence.json
 $env:PYTHONPATH='src'
 python -m elt_v2.evidence_cli validate --file docs/release-evidence.json
 ```
+
+GitHub Actions 上で同じ検証を残す場合は、`v2 release evidence validation` workflow の `evidence_json` に完成済み JSON を貼り付けます。検証結果は `release-evidence-validation` artifact と workflow Summary に保存されます。

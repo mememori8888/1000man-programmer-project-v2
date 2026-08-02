@@ -261,6 +261,21 @@ def test_compatibility_audit_workflow_uses_private_csv_and_bigquery_diff():
     assert "Fail on compatibility diff" in workflow_text
 
 
+def test_release_evidence_workflow_validates_pasted_json_and_archives_result():
+    workflow_text = Path(".github/workflows/release-evidence.yml").read_text(encoding="utf-8")
+
+    assert "name: v2 release evidence validation" in workflow_text
+    assert "workflow_dispatch:" in workflow_text
+    assert "evidence_json:" in workflow_text
+    assert "fail_on_warning:" in workflow_text
+    assert "elt-evidence validate --file work/release-evidence.json" in workflow_text
+    assert "work/release-evidence-validation.json" in workflow_text
+    assert "release-evidence-validation" in workflow_text
+    assert "Fail on invalid evidence" in workflow_text
+    assert "Fail on warnings" in workflow_text
+    assert "GITHUB_STEP_SUMMARY" in workflow_text
+
+
 def test_webapp_uses_curated_public_file_presets():
     app_text = Path("docs/webapp/app.js").read_text(encoding="utf-8")
     index_text = Path("docs/webapp/index.html").read_text(encoding="utf-8")
