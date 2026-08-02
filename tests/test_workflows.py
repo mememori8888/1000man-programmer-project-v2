@@ -81,6 +81,9 @@ def test_serp_relevance_extract_workflow_stores_raw_response():
     assert "elt-brightdata run-serp" in workflow_text
     assert "--zone-name" in workflow_text
     assert "--dataset-kind serp_relevance" in workflow_text
+    assert workflow_text.count("elt-raw-write") == 1
+    assert "optionally upload to GCS" in workflow_text
+    assert "--gcs-bucket" in workflow_text
     assert "sql/bigquery/001_create_raw_tables.sql" in workflow_text
     assert "elt-bigquery load-raw" in workflow_text
     assert "sql/bigquery/020_parse_raw_serp_responses.sql" in workflow_text
@@ -96,6 +99,9 @@ def test_serp_relevance_batch_workflow_builds_matrix_and_stores_raw_responses():
     assert "build-serp-items" in workflow_text
     assert "matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}" in workflow_text
     assert "--dataset-kind serp_relevance" in workflow_text
+    assert workflow_text.count("elt-raw-write") == 1
+    assert "optionally upload to GCS" in workflow_text
+    assert "--gcs-bucket" in workflow_text
     assert "sql/bigquery/001_create_raw_tables.sql" in workflow_text
     assert "elt-bigquery load-raw" in workflow_text
     assert "max-parallel" in workflow_text
@@ -205,6 +211,9 @@ def test_raw_ingest_workflow_writes_step_summary():
 
     assert "Raw ELT ingest" in workflow_text
     assert "GITHUB_STEP_SUMMARY" in workflow_text
+    assert workflow_text.count("elt-raw-write") == 1
+    assert "optionally upload to GCS" in workflow_text
+    assert "--gcs-bucket" in workflow_text
     assert "GCS raw object" in workflow_text
     assert "- serp_relevance" in workflow_text
     assert "sql/bigquery/001_create_raw_tables.sql" in workflow_text

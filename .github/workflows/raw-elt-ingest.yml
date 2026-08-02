@@ -118,14 +118,19 @@ jobs:
           )
           PY
 
-      - name: Store raw object locally
+      - name: Store raw object locally and optionally upload to GCS
         id: local
         run: |
-          elt-raw-write \
-            --input work/raw-input/payload.json \
-            --source-run-id "${{ inputs.source_run_id }}" \
-            --dataset-kind "${{ inputs.dataset_kind }}" \
-            --local-output-root work/raw-output | tee work/raw-write-result.json
+          args=(
+            --input work/raw-input/payload.json
+            --source-run-id "${{ inputs.source_run_id }}"
+            --dataset-kind "${{ inputs.dataset_kind }}"
+            --local-output-root work/raw-output
+          )
+          if [ -n "${{ inputs.gcs_bucket }}" ]; then
+            args+=(--gcs-bucket "${{ inputs.gcs_bucket }}")
+          fi
+          elt-raw-write "${args[@]}" | tee work/raw-write-result.json
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           from pathlib import Path
@@ -136,16 +141,9 @@ jobs:
           print(f"object_name={manifest['object_name']}")
           print(f"manifest_path={local_path}.manifest.json")
           print(f"local_path={local_path}")
+          if result.get("gcs_uri"):
+              print(f"gcs_uri={result['gcs_uri']}")
           PY
-
-      - name: Upload raw object to GCS
-        if: inputs.gcs_bucket != ''
-        run: |
-          elt-raw-write \
-            --input work/raw-input/payload.json \
-            --source-run-id "${{ inputs.source_run_id }}" \
-            --dataset-kind "${{ inputs.dataset_kind }}" \
-            --gcs-bucket "${{ inputs.gcs_bucket }}"
 
       - name: Load raw row into BigQuery
         if: inputs.gcs_bucket != '' && inputs.bigquery_project_id != '' && inputs.bigquery_dataset != ''
@@ -186,7 +184,7 @@ jobs:
             echo "- local raw object: \`${{ steps.local.outputs.local_path }}\`"
             echo "- manifest: \`${{ steps.local.outputs.manifest_path }}\`"
             if [ -n "${{ inputs.gcs_bucket }}" ]; then
-              echo "- GCS raw object: \`gs://${{ inputs.gcs_bucket }}/${{ steps.local.outputs.object_name }}\`"
+              echo "- GCS raw object: \`${{ steps.local.outputs.gcs_uri }}\`"
             fi
             if [ -n "${{ inputs.bigquery_project_id }}" ] && [ -n "${{ inputs.bigquery_dataset }}" ]; then
               echo "- BigQuery raw table target: \`${{ inputs.bigquery_project_id }}.${{ inputs.bigquery_dataset }}\`"
