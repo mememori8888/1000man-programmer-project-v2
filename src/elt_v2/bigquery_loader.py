@@ -171,9 +171,9 @@ def resolve_csv_export_destination_uri(
     if not bucket:
         raise ValueError("destination_uri or gcs_bucket is required")
 
-    normalized = (legacy_output_path.strip() or f"{table}.csv").replace("\\", "/").lstrip("/")
+    normalized = (legacy_output_path.strip() or f"{table}.csv").replace("\\", "/")
     parts = [part for part in normalized.split("/") if part not in {"", "."}]
-    if not parts or any(part == ".." for part in parts):
+    if normalized.startswith("/") or not parts or any(part == ".." for part in parts):
         raise ValueError(f"legacy_output_path is not safe: {legacy_output_path}")
 
     path = PurePosixPath("exports", *parts)

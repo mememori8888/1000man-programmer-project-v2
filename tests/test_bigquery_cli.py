@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from elt_v2 import bigquery_cli
 
 
@@ -106,3 +108,18 @@ def test_build_serp_targets_dry_run_cli_prints_sql(capsys):
     assert "`project-123.brightdata_raw.fact_reviews`" in sql
     assert "interval 14 day" in sql
     assert "limit 5" in sql
+
+
+def test_resolve_export_uri_cli_rejects_absolute_legacy_path():
+    with pytest.raises(ValueError, match="legacy_output_path is not safe"):
+        bigquery_cli.main(
+            [
+                "resolve-export-uri",
+                "--gcs-bucket",
+                "export-bucket",
+                "--legacy-output-path",
+                "/tmp/secret.csv",
+                "--table",
+                "fact_reviews",
+            ]
+        )

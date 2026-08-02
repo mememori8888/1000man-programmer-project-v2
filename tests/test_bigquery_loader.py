@@ -195,6 +195,12 @@ def test_rejects_unsafe_legacy_csv_export_path():
             legacy_output_path="../secret.csv",
             table="fact_reviews",
         )
+    with pytest.raises(ValueError, match="not safe"):
+        resolve_csv_export_destination_uri(
+            gcs_bucket="export-bucket",
+            legacy_output_path="/tmp/secret.csv",
+            table="fact_reviews",
+        )
 
 
 def test_builds_compatibility_audit_sql(tmp_path):
