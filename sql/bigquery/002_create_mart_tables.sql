@@ -23,3 +23,16 @@ create table if not exists `${PROJECT_ID}.${DATASET}.fact_reviews` (
 )
 partition by review_date
 cluster by facility_id, review_id;
+
+create table if not exists `${PROJECT_ID}.${DATASET}.fact_review_relevance_ranks` (
+  facility_id string not null,
+  review_id string,
+  rank_position int64 not null,
+  rank_source string not null,
+  review_text string,
+  author_name string,
+  rating int64,
+  extracted_at timestamp,
+  loaded_at timestamp
+)
+cluster by facility_id, review_id;

@@ -188,8 +188,13 @@ def test_rejects_non_gcs_csv_export_uri():
 def test_transform_sql_file_registry_includes_parse_steps():
     assert "sql/bigquery/010_parse_raw_reviews.sql" in TRANSFORM_SQL_FILES
     assert "sql/bigquery/011_parse_raw_facilities.sql" in TRANSFORM_SQL_FILES
+    assert "sql/bigquery/020_parse_raw_serp_responses.sql" in TRANSFORM_SQL_FILES
+    assert "sql/bigquery/120_build_review_relevance_ranks.sql" in TRANSFORM_SQL_FILES
     assert TRANSFORM_SQL_FILES.index("sql/bigquery/010_parse_raw_reviews.sql") < TRANSFORM_SQL_FILES.index(
         "sql/bigquery/101_deduplicate_reviews.sql"
+    )
+    assert TRANSFORM_SQL_FILES.index("sql/bigquery/020_parse_raw_serp_responses.sql") < TRANSFORM_SQL_FILES.index(
+        "sql/bigquery/120_build_review_relevance_ranks.sql"
     )
 
 

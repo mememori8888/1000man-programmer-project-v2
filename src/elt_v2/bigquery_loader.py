@@ -19,7 +19,9 @@ TRANSFORM_SQL_FILES = [
     "sql/bigquery/002_create_mart_tables.sql",
     "sql/bigquery/010_parse_raw_reviews.sql",
     "sql/bigquery/011_parse_raw_facilities.sql",
+    "sql/bigquery/020_parse_raw_serp_responses.sql",
     "sql/bigquery/101_deduplicate_reviews.sql",
+    "sql/bigquery/120_build_review_relevance_ranks.sql",
 ]
 
 

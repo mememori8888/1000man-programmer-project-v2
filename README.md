@@ -121,7 +121,9 @@ DWH 内は、施設ジャンルが増えても Python に泥臭い `if` 分岐�
 ```mermaid
 erDiagram
     dim_facilities ||--o{ fact_reviews : has
+    dim_facilities ||--o{ fact_review_relevance_ranks : ranks
     raw_reviews }o--|| dim_facilities : resolves_to
+    raw_serp_responses }o--|| dim_facilities : ranks_for
 
     raw_reviews {
         string source_run_id
@@ -152,13 +154,30 @@ erDiagram
         timestamp extracted_at
         timestamp loaded_at
     }
+
+    raw_serp_responses {
+        string source_run_id
+        string raw_object_uri
+        string raw_payload
+        timestamp extracted_at
+    }
+
+    fact_review_relevance_ranks {
+        string facility_id
+        string review_id
+        int rank_position
+        string rank_source
+        timestamp extracted_at
+    }
 ```
 
 | テーブル | 役割 | 主なデータ |
 | --- | --- | --- |
 | `raw_reviews` | Python が投げ込んだ未加工データ。重複あり | `source_run_id`, `raw_object_uri`, `raw_payload`, `extracted_at` |
+| `raw_serp_responses` | SERP API の未加工レスポンス。関連度順位の原本 | `source_run_id`, `raw_object_uri`, `raw_payload`, `extracted_at` |
 | `dim_facilities` | 施設の種類、名前、住所、FID を管理するマスタ | `facility_id`, `facility_type`, `facility_name`, `address`, `google_map_url`, `fid` |
 | `fact_reviews` | DWH で重複排除されたレビュー事実データ | `review_id`, `facility_id`, `rating`, `review_text`, `review_date`, `extracted_at` |
+| `fact_review_relevance_ranks` | SERP レスポンスから作る関連度順位ファクト | `facility_id`, `review_id`, `rank_position`, `rank_source`, `extracted_at` |
 
 重複排除は BigQuery の `ROW_NUMBER()` を使います。
 
@@ -203,7 +222,7 @@ where row_num = 1;
 - `.github/workflows/bigquery-transform.yml`: BigQuery SQL を単体または標準順序の `all` で手動実行する変換 workflow。
 - `.github/workflows/bigquery-export.yml`: `fact_reviews` または `dim_facilities` を GCS へ CSV export する互換 workflow。
 - `docs/webapp/`: v2 repo に Issue を作成する軽量 WebApp。
-- `sql/bigquery/`: BigQuery の raw table、raw payload 解析、mart table、レビュー重複排除 SQL。
+- `sql/bigquery/`: BigQuery の raw table、raw payload 解析、mart table、レビュー重複排除、関連度ランク fact 生成 SQL。
 - `tests/`: raw object 生成と manifest 保存の単体テスト。
 
 ローカル検証例:
