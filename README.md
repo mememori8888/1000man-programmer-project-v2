@@ -230,6 +230,7 @@ where row_num = 1;
 - `.github/workflows/raw-object-replay.yml`: GCS 上の raw object と manifest を BigQuery raw table へ再投入する復旧 workflow。
 - `.github/workflows/bigquery-transform.yml`: BigQuery SQL を単体または標準順序の `all` で手動実行する変換 workflow。
 - `.github/workflows/bigquery-export.yml`: `fact_reviews`, `dim_facilities`, `fact_review_relevance_ranks` を GCS へ CSV export する互換 workflow。IssueOps では `ELT_EXPORT_GCS_BUCKET` があればそこへ、なければ `ELT_RAW_GCS_BUCKET` の `exports/` 配下へ出力する。
+  - IssueOps から呼び出した場合、export 先の GCS URI を最終 Issue コメントにも表示する。
 - `.github/workflows/compatibility-audit.yml`: private repo の旧CSVを BigQuery 一時監査テーブルへロードし、v2 mart との件数・キー差分を確認する workflow。
   - `fail_on_diff` が有効な場合、欠損キーが見つかった監査 run は失敗扱いにする。Summary と JSON artifact には件数とサンプルを残す。
 - `docs/webapp/`: v2 repo に Issue を作成する軽量 WebApp。

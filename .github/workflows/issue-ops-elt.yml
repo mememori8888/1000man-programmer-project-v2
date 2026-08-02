@@ -246,6 +246,8 @@ jobs:
           SERP_RESULT: ${{ needs.serp_relevance.result }}
           EXPORT_REVIEWS_RESULT: ${{ needs.export_reviews.result }}
           EXPORT_RELEVANCE_RESULT: ${{ needs.export_relevance.result }}
+          EXPORT_REVIEWS_DESTINATION_URI: ${{ needs.export_reviews.outputs.destination_uri }}
+          EXPORT_RELEVANCE_DESTINATION_URI: ${{ needs.export_relevance.outputs.destination_uri }}
           CONFIG_RESULT: ${{ needs.config.result }}
           CONFIG_VALID: ${{ needs.config.outputs.valid }}
           CONFIG_ERRORS: ${{ needs.config.outputs.errors }}
@@ -257,6 +259,8 @@ jobs:
             const serpResult = process.env.SERP_RESULT || 'skipped';
             const exportReviewsResult = process.env.EXPORT_REVIEWS_RESULT || 'skipped';
             const exportRelevanceResult = process.env.EXPORT_RELEVANCE_RESULT || 'skipped';
+            const exportReviewsDestinationUri = process.env.EXPORT_REVIEWS_DESTINATION_URI || '';
+            const exportRelevanceDestinationUri = process.env.EXPORT_RELEVANCE_DESTINATION_URI || '';
             const configResult = process.env.CONFIG_RESULT || 'skipped';
             const configValid = process.env.CONFIG_VALID === 'true';
             const configErrors = process.env.CONFIG_ERRORS || '';
@@ -273,6 +277,10 @@ jobs:
             const resultLines = activeResults.length
               ? activeResults.map(([name, result]) => `- ${name}: \`${result}\``)
               : ['- no execution job was started'];
+            const exportLines = [
+              exportReviewsDestinationUri && `- fact/dimension CSV: \`${exportReviewsDestinationUri}\``,
+              exportRelevanceDestinationUri && `- relevance CSV: \`${exportRelevanceDestinationUri}\``,
+            ].filter(Boolean);
 
             let body;
             if (!valid) {
@@ -309,6 +317,7 @@ jobs:
                 '## v2 ELT execution completed',
                 '',
                 ...resultLines,
+                ...(exportLines.length ? ['', '### Outputs', ...exportLines] : []),
                 '',
                 'artifact と workflow summary に raw object、manifest、GCS/BigQuery の結果が保存されています。',
                 `[Actions run](${runUrl})`,

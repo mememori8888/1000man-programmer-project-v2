@@ -56,6 +56,13 @@ on:
     secrets:
       GCP_SERVICE_ACCOUNT_JSON:
         required: false
+    outputs:
+      table_id:
+        description: Exported BigQuery table id
+        value: ${{ jobs.export.outputs.table_id }}
+      destination_uri:
+        description: GCS CSV destination URI
+        value: ${{ jobs.export.outputs.destination_uri }}
 
 permissions:
   contents: read
@@ -65,6 +72,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
+    outputs:
+      table_id: ${{ steps.result.outputs.table_id }}
+      destination_uri: ${{ steps.result.outputs.destination_uri }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -96,6 +106,18 @@ jobs:
             --gcs-bucket "${{ inputs.gcs_bucket }}" \
             --legacy-output-path "${{ inputs.legacy_output_path }}" \
             | tee work/export-result.json
+
+      - name: Capture export result
+        id: result
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path("work/export-result.json").read_text(encoding="utf-8"))
+          print(f"table_id={result['table_id']}")
+          print(f"destination_uri={result['destination_uri']}")
+          PY
 
       - name: Summary
         if: always()

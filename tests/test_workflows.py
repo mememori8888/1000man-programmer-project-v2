@@ -38,6 +38,10 @@ def test_bigquery_export_workflow_uses_gcs_csv_destination():
     assert "exports" in workflow_text
     assert "work/export-result.json" in workflow_text
     assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text
+    assert "workflow_call:" in workflow_text
+    assert "outputs:" in workflow_text
+    assert "destination_uri: ${{ steps.result.outputs.destination_uri }}" in workflow_text
+    assert "Capture export result" in workflow_text
     assert "fact_reviews" in workflow_text
     assert "dim_facilities" in workflow_text
     assert "fact_review_relevance_ranks" in workflow_text
@@ -130,6 +134,9 @@ def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract(
     assert "ELT_EXPORT_GCS_BUCKET" in workflow_text
     assert "fact_reviews export" in workflow_text
     assert "relevance ranks export" in workflow_text
+    assert "EXPORT_REVIEWS_DESTINATION_URI" in workflow_text
+    assert "EXPORT_RELEVANCE_DESTINATION_URI" in workflow_text
+    assert "### Outputs" in workflow_text
 
 
 def test_issue_ops_routes_generic_reviews_to_brightdata_extract():
