@@ -265,10 +265,15 @@ def test_webapp_uses_curated_public_file_presets():
     assert 'id="workers"' in index_text
     assert "params.fid_file" not in app_text
     assert "csvPathOrDefault" in app_text
+    assert "validateCsvPath" in app_text
+    assert "validateCurrentForm" in app_text
+    assert "setCustomValidity" in app_text
+    assert "Use a .csv path under settings/ or results/." in app_text
     assert 'csvPathOrDefault("csvFile", "results/dental_new.csv")' in app_text
     assert 'csvPathOrDefault("outputFile", "results/dental_reviews.csv")' in app_text
     assert 'csvPathOrDefault("fidFile", "results/fid.csv")' in app_text
     assert 'fid_file: csvPathOrDefault("fidFile", "results/fid.csv")' in app_text
+    assert "if (!validateCurrentForm())" in app_text
     assert 'start_line: fieldValue("startLine")' in app_text
     assert 'process_count: fieldValue("processCount")' in app_text
     assert 'workers: fieldValue("workers")' in app_text

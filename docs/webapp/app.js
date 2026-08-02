@@ -20,6 +20,7 @@ const form = document.getElementById("jobForm");
 const preview = document.getElementById("preview");
 const workflow = document.getElementById("workflow");
 const copyButton = document.getElementById("copyButton");
+const csvPathError = "Use a .csv path under settings/ or results/.";
 let filePresets = { settings: [], results: [] };
 
 function fieldValue(id) {
@@ -28,6 +29,52 @@ function fieldValue(id) {
 
 function csvPathOrDefault(id, fallback) {
   return fieldValue(id) || fallback;
+}
+
+function validateCsvPath(path) {
+  const normalized = path.replaceAll("\\", "/").trim();
+  const parts = normalized.split("/");
+  return (
+    normalized.endsWith(".csv") &&
+    !normalized.startsWith("/") &&
+    (parts[0] === "settings" || parts[0] === "results") &&
+    parts.every((part) => part && part !== "." && part !== "..")
+  );
+}
+
+function validateCsvField(id, fallback) {
+  const input = document.getElementById(id);
+  const path = csvPathOrDefault(id, fallback);
+  input.setCustomValidity(validateCsvPath(path) ? "" : csvPathError);
+  return input.validationMessage === "";
+}
+
+function clearCsvValidity() {
+  ["csvFile", "outputFile", "fidFile", "summaryFile"].forEach((id) => {
+    document.getElementById(id).setCustomValidity("");
+  });
+}
+
+function validateCurrentForm() {
+  const selected = workflow.value;
+  const checks = [];
+  clearCsvValidity();
+
+  if (selected === "reviews") {
+    checks.push(validateCsvField("fidFile", "results/fid.csv"));
+    checks.push(validateCsvField("outputFile", "results/dental_reviews.csv"));
+  }
+
+  if (selected === "reviews_sequential" || selected === "reviews_recent_relevance") {
+    checks.push(validateCsvField("csvFile", "results/dental_new.csv"));
+    checks.push(validateCsvField("outputFile", "results/dental_reviews.csv"));
+  }
+
+  if (selected === "reviews_recent_relevance") {
+    checks.push(validateCsvField("summaryFile", "results/relevance_rank_summary.csv"));
+  }
+
+  return checks.every(Boolean);
 }
 
 function hasPurpose(entry, purpose) {
@@ -170,12 +217,16 @@ function refreshPreview() {
 
 function openIssue() {
   const selected = workflow.value;
+  if (!validateCurrentForm()) {
+    form.reportValidity();
+    return;
+  }
   const title = `[${workflowNames[selected]}] ${new Date().toISOString().slice(0, 10)}`;
-  const params = new URLSearchParams({
+  const queryParams = new URLSearchParams({
     title,
     body: buildIssueBody(),
   });
-  window.open(`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues/new?${params}`, "_blank");
+  window.open(`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues/new?${queryParams}`, "_blank");
 }
 
 form.addEventListener("input", refreshPreview);
