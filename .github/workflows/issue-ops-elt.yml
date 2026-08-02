@@ -120,9 +120,55 @@ jobs:
               body: '実行権限がないため `/承認` は処理されませんでした。'
             });
 
-  ingest:
+  config:
     needs: parse
-    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.parse.outputs.workflow_type == 'reviews'
+    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true'
+    runs-on: ubuntu-latest
+    env:
+      GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
+      ELT_RAW_GCS_BUCKET: ${{ vars.ELT_RAW_GCS_BUCKET }}
+      ELT_BIGQUERY_PROJECT_ID: ${{ vars.ELT_BIGQUERY_PROJECT_ID }}
+      ELT_BIGQUERY_DATASET: ${{ vars.ELT_BIGQUERY_DATASET }}
+    outputs:
+      valid: ${{ steps.check.outputs.valid }}
+      errors: ${{ steps.check.outputs.errors }}
+    steps:
+      - name: Check runtime configuration
+        id: check
+        env:
+          WORKFLOW_TYPE: ${{ needs.parse.outputs.workflow_type }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+
+          workflow_type = os.environ["WORKFLOW_TYPE"]
+          missing = []
+          if workflow_type == "reviews_recent_relevance":
+              for name in [
+                  "GCP_SERVICE_ACCOUNT_JSON",
+                  "ELT_RAW_GCS_BUCKET",
+                  "ELT_BIGQUERY_PROJECT_ID",
+                  "ELT_BIGQUERY_DATASET",
+              ]:
+                  if not os.environ.get(name):
+                      missing.append(name)
+
+          print(f"valid={'false' if missing else 'true'}")
+          if missing:
+              print("errors<<EOF")
+              print("reviews_recent_relevance requires these settings before paid extraction:")
+              for name in missing:
+                  print(f"- {name}")
+              print("")
+              print("Run the v2 ELT preflight workflow after configuring them.")
+              print("EOF")
+          else:
+              print("errors=")
+          PY
+
+  ingest:
+    needs: [parse, config]
+    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.config.outputs.valid == 'true' && needs.parse.outputs.workflow_type == 'reviews'
     uses: ./.github/workflows/raw-elt-ingest.yml
     with:
       dataset_kind: ${{ needs.parse.outputs.dataset_kind }}
@@ -133,8 +179,8 @@ jobs:
       bigquery_dataset: ${{ vars.ELT_BIGQUERY_DATASET || '' }}
 
   extract:
-    needs: parse
-    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.parse.outputs.workflow_type != 'reviews'
+    needs: [parse, config]
+    if: needs.parse.outputs.should_run == 'true' && needs.parse.outputs.valid == 'true' && needs.config.outputs.valid == 'true' && needs.parse.outputs.workflow_type != 'reviews'
     uses: ./.github/workflows/brightdata-extract.yml
     secrets: inherit
     with:
@@ -168,7 +214,7 @@ jobs:
       serp_max_workers: ${{ fromJson(needs.parse.outputs.payload_json).params.serp_max_workers || '3' }}
 
   report:
-    needs: [parse, ingest, extract, serp_relevance]
+    needs: [parse, config, ingest, extract, serp_relevance]
     if: always() && needs.parse.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -179,14 +225,19 @@ jobs:
             const rawResult = '${{ needs.ingest.result }}';
             const extractResult = '${{ needs.extract.result }}';
             const serpResult = '${{ needs.serp_relevance.result }}';
+            const configResult = '${{ needs.config.result }}';
+            const configValid = '${{ needs.config.outputs.valid }}' === 'true';
+            const configErrors = `${{ needs.config.outputs.errors }}`;
             const result = serpResult && serpResult !== 'skipped'
               ? `dataset=${extractResult}, serp=${serpResult}`
               : (extractResult && extractResult !== 'skipped' ? extractResult : rawResult);
             const valid = '${{ needs.parse.outputs.valid }}' === 'true';
             const errors = `${{ needs.parse.outputs.validation_errors }}`;
-            const body = valid
+            const body = valid && configValid
               ? `v2 ELT result: \`${result}\`\n\nBrightData extract、SERP relevance、または raw ingest の artifact に raw object と manifest が保存されています。`
-              : `v2 ELT validation failed:\n\n\`\`\`\n${errors || 'Unknown validation error'}\n\`\`\``;
+              : (!configValid && configResult !== 'skipped'
+                ? `v2 ELT configuration check failed:\n\n\`\`\`\n${configErrors || 'Unknown configuration error'}\n\`\`\``
+                : `v2 ELT validation failed:\n\n\`\`\`\n${errors || 'Unknown validation error'}\n\`\`\``);
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

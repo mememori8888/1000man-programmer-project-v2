@@ -77,6 +77,11 @@ def test_serp_relevance_batch_workflow_builds_matrix_and_stores_raw_responses():
 def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract():
     workflow_text = Path(".github/workflows/issue-ops-elt.yml").read_text(encoding="utf-8")
 
+    assert "config:" in workflow_text
+    assert "reviews_recent_relevance requires these settings before paid extraction" in workflow_text
+    assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text
+    assert "ELT_RAW_GCS_BUCKET" in workflow_text
+    assert "needs.config.outputs.valid == 'true'" in workflow_text
     assert "serp_relevance:" in workflow_text
     assert "uses: ./.github/workflows/serp-relevance-batch.yml" in workflow_text
     assert "needs: [parse, extract]" in workflow_text
