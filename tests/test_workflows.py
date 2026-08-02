@@ -11,6 +11,7 @@ def test_brightdata_extract_does_not_emit_raw_payload_as_job_output():
     assert "raw-ingest:" not in workflow_text
     assert "work/brightdata-result.json" in workflow_text
     assert "elt-raw-write" in workflow_text
+    assert "GITHUB_STEP_SUMMARY" in workflow_text
 
 
 def test_bigquery_export_workflow_uses_gcs_csv_destination():
@@ -72,6 +73,8 @@ def test_serp_relevance_batch_workflow_builds_matrix_and_stores_raw_responses():
     assert "finalize:" in workflow_text
     assert "sql/bigquery/020_parse_raw_serp_responses.sql" in workflow_text
     assert "sql/bigquery/120_build_review_relevance_ranks.sql" in workflow_text
+    assert "SERP relevance prepare" in workflow_text
+    assert "SERP relevance finalize" in workflow_text
 
 
 def test_issue_ops_routes_reviews_relevance_to_serp_batch_after_dataset_extract():
@@ -96,3 +99,11 @@ def test_raw_object_replay_workflow_uses_gcs_raw_replay_cli():
     assert "replay-gcs-raw" in workflow_text
     assert "--raw-uri" in workflow_text
     assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text
+
+
+def test_raw_ingest_workflow_writes_step_summary():
+    workflow_text = Path(".github/workflows/raw-elt-ingest.yml").read_text(encoding="utf-8")
+
+    assert "Raw ELT ingest" in workflow_text
+    assert "GITHUB_STEP_SUMMARY" in workflow_text
+    assert "GCS raw object" in workflow_text

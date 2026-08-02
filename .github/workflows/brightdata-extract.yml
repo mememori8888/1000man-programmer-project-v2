@@ -238,3 +238,23 @@ jobs:
           path: work/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## BrightData extract"
+            echo "- workflow_type: \`${{ inputs.workflow_type }}\`"
+            echo "- dataset_kind: \`${{ steps.kind.outputs.dataset_kind }}\`"
+            echo "- csv_file: \`${{ inputs.csv_file }}\`"
+            echo "- dataset_id: \`${{ inputs.dataset_id }}\`"
+            echo "- local raw object: \`${{ steps.local.outputs.local_path }}\`"
+            echo "- manifest: \`${{ steps.local.outputs.manifest_path }}\`"
+            if [ -n "${{ vars.ELT_RAW_GCS_BUCKET }}" ]; then
+              echo "- GCS raw object: \`gs://${{ vars.ELT_RAW_GCS_BUCKET }}/${{ steps.local.outputs.object_name }}\`"
+            fi
+            if [ -n "${{ vars.ELT_BIGQUERY_PROJECT_ID }}" ] && [ -n "${{ vars.ELT_BIGQUERY_DATASET }}" ]; then
+              echo "- BigQuery raw dataset: \`${{ vars.ELT_BIGQUERY_PROJECT_ID }}.${{ vars.ELT_BIGQUERY_DATASET }}\`"
+            fi
+            echo "- artifact: \`brightdata-extract-${{ github.run_id }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

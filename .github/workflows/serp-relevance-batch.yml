@@ -227,6 +227,21 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Summary
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          matrix = json.loads(Path("work/serp-matrix.json").read_text(encoding="utf-8"))
+          print("## SERP relevance prepare")
+          print(f"- target_source: `${{ inputs.target_source }}`")
+          print(f"- target_count: `{len(matrix.get('include', []))}`")
+          print(f"- max_parallel: `${{ steps.limits.outputs.max_parallel }}`")
+          print(f"- effective_start_row: `${{ steps.limits.outputs.effective_start_row }}`")
+          print(f"- effective_row_limit: `${{ steps.limits.outputs.effective_row_limit }}`")
+          PY
+
   extract:
     needs: prepare
     if: ${{ fromJson(needs.prepare.outputs.matrix).include[0] != null }}
@@ -336,6 +351,21 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## SERP relevance extract"
+            echo "- matrix_index: \`${{ matrix.index }}\`"
+            echo "- facility_id: \`${{ matrix.facility_id }}\`"
+            echo "- raw object: \`${{ steps.local.outputs.local_path }}\`"
+            echo "- manifest: \`${{ steps.local.outputs.manifest_path }}\`"
+            if [ -n "${{ vars.ELT_RAW_GCS_BUCKET }}" ]; then
+              echo "- GCS raw object: \`gs://${{ vars.ELT_RAW_GCS_BUCKET }}/${{ steps.local.outputs.object_name }}\`"
+            fi
+            echo "- artifact: \`serp-relevance-${{ matrix.index }}-${{ github.run_id }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   finalize:
     needs: [prepare, extract]
     if: always() && needs.extract.result == 'success' && inputs.bigquery_project_id != '' && inputs.bigquery_dataset != ''
@@ -375,3 +405,12 @@ jobs:
             --sql-file sql/bigquery/120_build_review_relevance_ranks.sql \
             --project-id "${{ inputs.bigquery_project_id }}" \
             --dataset "${{ inputs.bigquery_dataset }}"
+
+      - name: Summary
+        run: |
+          {
+            echo "## SERP relevance finalize"
+            echo "- BigQuery dataset: \`${{ inputs.bigquery_project_id }}.${{ inputs.bigquery_dataset }}\`"
+            echo "- parsed table: \`raw_serp_relevance_parsed\`"
+            echo "- fact table: \`fact_review_relevance_ranks\`"
+          } >> "$GITHUB_STEP_SUMMARY"

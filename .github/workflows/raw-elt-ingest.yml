@@ -151,3 +151,21 @@ jobs:
           path: work/raw-output
           if-no-files-found: error
           retention-days: 14
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Raw ELT ingest"
+            echo "- dataset_kind: \`${{ inputs.dataset_kind }}\`"
+            echo "- source_run_id: \`${{ inputs.source_run_id }}\`"
+            echo "- local raw object: \`${{ steps.local.outputs.local_path }}\`"
+            echo "- manifest: \`${{ steps.local.outputs.manifest_path }}\`"
+            if [ -n "${{ inputs.gcs_bucket }}" ]; then
+              echo "- GCS raw object: \`gs://${{ inputs.gcs_bucket }}/${{ steps.local.outputs.object_name }}\`"
+            fi
+            if [ -n "${{ inputs.bigquery_project_id }}" ] && [ -n "${{ inputs.bigquery_dataset }}" ]; then
+              echo "- BigQuery raw table target: \`${{ inputs.bigquery_project_id }}.${{ inputs.bigquery_dataset }}\`"
+            fi
+            echo "- artifact: \`raw-elt-${{ inputs.dataset_kind }}-${{ github.run_id }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
