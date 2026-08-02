@@ -16,6 +16,14 @@ on:
       dataset:
         description: BigQuery dataset
         required: true
+      run_transform:
+        description: Run managed BigQuery transform SQL after replay
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 permissions:
   contents: read
@@ -45,7 +53,15 @@ jobs:
         with:
           credentials_json: ${{ env.GCP_SERVICE_ACCOUNT_JSON }}
 
+      - name: Ensure BigQuery raw tables
+        run: |
+          elt-bigquery run-sql \
+            --sql-file sql/bigquery/001_create_raw_tables.sql \
+            --project-id "${{ inputs.project_id }}" \
+            --dataset "${{ inputs.dataset }}"
+
       - name: Replay raw object into BigQuery
+        id: replay
         run: |
           args=(
             replay-gcs-raw
@@ -56,4 +72,25 @@ jobs:
           if [ -n "${{ inputs.manifest_uri }}" ]; then
             args+=(--manifest-uri "${{ inputs.manifest_uri }}")
           fi
-          elt-bigquery "${args[@]}"
+          elt-bigquery "${args[@]}" | tee work-replay-result.json
+
+      - name: Run BigQuery transforms
+        if: inputs.run_transform == 'true'
+        run: |
+          elt-bigquery run-all-sql \
+            --project-id "${{ inputs.project_id }}" \
+            --dataset "${{ inputs.dataset }}"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Raw object replay"
+            echo "- raw_uri: \`${{ inputs.raw_uri }}\`"
+            if [ -n "${{ inputs.manifest_uri }}" ]; then
+              echo "- manifest_uri: \`${{ inputs.manifest_uri }}\`"
+            fi
+            echo "- BigQuery dataset: \`${{ inputs.project_id }}.${{ inputs.dataset }}\`"
+            echo "- BigQuery raw schema: \`ensured\`"
+            echo "- BigQuery transform: \`${{ inputs.run_transform }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -142,9 +142,13 @@ def test_raw_object_replay_workflow_uses_gcs_raw_replay_cli():
     workflow_text = Path(".github/workflows/raw-object-replay.yml").read_text(encoding="utf-8")
 
     assert "elt-bigquery" in workflow_text
+    assert "sql/bigquery/001_create_raw_tables.sql" in workflow_text
     assert "replay-gcs-raw" in workflow_text
+    assert "elt-bigquery run-all-sql" in workflow_text
+    assert "run_transform" in workflow_text
     assert "--raw-uri" in workflow_text
     assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text
+    assert "GITHUB_STEP_SUMMARY" in workflow_text
 
 
 def test_raw_ingest_workflow_writes_step_summary():
