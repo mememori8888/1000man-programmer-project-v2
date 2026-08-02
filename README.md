@@ -48,6 +48,8 @@ GCS/BigQuery 連携を有効にする場合は、GitHub repository variables に
 - `ELT_BIGQUERY_PROJECT_ID`
 - `ELT_BIGQUERY_DATASET`
 
+設定後は Actions の `v2 ELT preflight` を手動実行し、BrightData token、private data repo、GCS、BigQuery dataset の接続を確認します。
+
 ## 新アーキテクチャ
 
 標準構成は `Google Cloud Storage + BigQuery` に固定します。
@@ -214,6 +216,7 @@ where row_num = 1;
 - `src/elt_v2/raw_writer.py`: raw object 名、SHA-256、manifest、ローカル保存、GCS upload 境界を管理する。
 - `src/elt_v2/issue_ops.py`: `/run-*` Issue コマンドと JSON パラメータを解析し、raw ingest 用 payload に変換する。
 - `.github/workflows/issue-ops-elt.yml`: demo と同じ IssueOps 承認体験を v2 に接続する。
+- `.github/workflows/preflight.yml`: secrets/variables と GCP/private repo 接続を実行前に確認する。
 - `.github/workflows/brightdata-extract.yml`: private data repo の CSV から BrightData Dataset API input items を作り、実取得する。
 - `.github/workflows/serp-reviews-smoke.yml`: BrightData SERP API の URL/zone 疎通を診断する。
 - `.github/workflows/serp-relevance-extract.yml`: SERP API response を `serp_relevance` raw object として保存し、BigQuery raw table へ投入する。

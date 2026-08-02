@@ -1,0 +1,137 @@
+name: v2 ELT preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      check_gcp:
+        description: Check GCP auth, GCS, and BigQuery settings
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+      check_brightdata:
+        description: Check BrightData token presence without making a paid request
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+      check_private_repo:
+        description: Check private data repository access
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    env:
+      BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
+      PRIVATE_REPO_PAT: ${{ secrets.PRIVATE_REPO_PAT }}
+      GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
+      ELT_RAW_GCS_BUCKET: ${{ vars.ELT_RAW_GCS_BUCKET }}
+      ELT_BIGQUERY_PROJECT_ID: ${{ vars.ELT_BIGQUERY_PROJECT_ID }}
+      ELT_BIGQUERY_DATASET: ${{ vars.ELT_BIGQUERY_DATASET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[gcp]"
+
+      - name: Check required settings
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+
+          checks = []
+
+          def require(name, enabled=True):
+              if not enabled:
+                  checks.append((name, "skipped"))
+                  return
+              checks.append((name, "ok" if os.environ.get(name) else "missing"))
+
+          check_gcp = os.environ["CHECK_GCP"] == "true"
+          check_brightdata = os.environ["CHECK_BRIGHTDATA"] == "true"
+          check_private_repo = os.environ["CHECK_PRIVATE_REPO"] == "true"
+
+          require("BRIGHTDATA_API_TOKEN", check_brightdata)
+          require("PRIVATE_REPO_PAT", check_private_repo)
+          require("GCP_SERVICE_ACCOUNT_JSON", check_gcp)
+          require("ELT_RAW_GCS_BUCKET", check_gcp)
+          require("ELT_BIGQUERY_PROJECT_ID", check_gcp)
+          require("ELT_BIGQUERY_DATASET", check_gcp)
+
+          missing = [name for name, status in checks if status == "missing"]
+          for name, status in checks:
+              print(f"{name}: {status}")
+          if missing:
+              print("Missing settings: " + ", ".join(missing), file=sys.stderr)
+              raise SystemExit(1)
+          PY
+        env:
+          CHECK_GCP: ${{ inputs.check_gcp }}
+          CHECK_BRIGHTDATA: ${{ inputs.check_brightdata }}
+          CHECK_PRIVATE_REPO: ${{ inputs.check_private_repo }}
+
+      - name: Authenticate to Google Cloud
+        if: inputs.check_gcp == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ env.GCP_SERVICE_ACCOUNT_JSON }}
+
+      - name: Check GCS bucket and BigQuery dataset
+        if: inputs.check_gcp == 'true'
+        run: |
+          python - <<'PY'
+          import os
+          from google.cloud import bigquery
+          from google.cloud import storage
+
+          bucket_name = os.environ["ELT_RAW_GCS_BUCKET"]
+          project_id = os.environ["ELT_BIGQUERY_PROJECT_ID"]
+          dataset = os.environ["ELT_BIGQUERY_DATASET"]
+
+          storage.Client(project=project_id).bucket(bucket_name).reload()
+          bigquery.Client(project=project_id).get_dataset(f"{project_id}.{dataset}")
+          print(f"GCS bucket ok: gs://{bucket_name}")
+          print(f"BigQuery dataset ok: {project_id}.{dataset}")
+          PY
+
+      - name: Check private data repository access
+        if: inputs.check_private_repo == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: mememori8888/googlemap
+          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          path: private-data
+          sparse-checkout: |
+            settings
+            results
+
+      - name: Summarize
+        run: |
+          {
+            echo "## v2 ELT preflight"
+            echo "- BrightData token check: ${{ inputs.check_brightdata }}"
+            echo "- Private data repo check: ${{ inputs.check_private_repo }}"
+            echo "- GCP check: ${{ inputs.check_gcp }}"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -17,6 +17,7 @@ This project moves heavy matching and deduplication out of Python and into BigQu
 - `.github/workflows/brightdata-extract.yml` keeps the BrightData result file inside the same job, stores it as a raw object, and only passes small metadata through GitHub outputs.
 - `elt-bigquery replay-gcs-raw` and `.github/workflows/raw-object-replay.yml` replay an existing GCS raw object plus its manifest into BigQuery without rerunning BrightData.
 - `elt-bigquery export-csv` and `.github/workflows/bigquery-export.yml` provide the compatibility path for users who still need CSV output from `fact_reviews` or `dim_facilities`.
+- `.github/workflows/preflight.yml` validates repository settings before paid or long-running workflows are launched.
 
 ## Next boundary
 

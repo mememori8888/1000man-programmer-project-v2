@@ -23,6 +23,19 @@ def test_bigquery_export_workflow_uses_gcs_csv_destination():
     assert "dim_facilities" in workflow_text
 
 
+def test_preflight_workflow_checks_required_runtime_settings():
+    workflow_text = Path(".github/workflows/preflight.yml").read_text(encoding="utf-8")
+
+    assert "BRIGHTDATA_API_TOKEN" in workflow_text
+    assert "PRIVATE_REPO_PAT" in workflow_text
+    assert "GCP_SERVICE_ACCOUNT_JSON" in workflow_text
+    assert "ELT_RAW_GCS_BUCKET" in workflow_text
+    assert "ELT_BIGQUERY_PROJECT_ID" in workflow_text
+    assert "ELT_BIGQUERY_DATASET" in workflow_text
+    assert "get_dataset" in workflow_text
+    assert "mememori8888/googlemap" in workflow_text
+
+
 def test_serp_smoke_workflow_uses_brightdata_serp_cli():
     workflow_text = Path(".github/workflows/serp-reviews-smoke.yml").read_text(encoding="utf-8")
 
