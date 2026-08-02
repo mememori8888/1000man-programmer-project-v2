@@ -43,3 +43,14 @@ def test_review_parser_keeps_input_facility_keys():
     assert "$.input.fid" in sql
     assert "$.input.gid" in sql
     assert "$.fid" in sql
+
+
+def test_mart_transforms_preserve_bigquery_physical_design():
+    dim_sql = Path("sql/bigquery/011_parse_raw_facilities.sql").read_text(encoding="utf-8").lower()
+    reviews_sql = Path("sql/bigquery/101_deduplicate_reviews.sql").read_text(encoding="utf-8").lower()
+    ranks_sql = Path("sql/bigquery/120_build_review_relevance_ranks.sql").read_text(encoding="utf-8").lower()
+
+    assert "cluster by facility_type, facility_id" in dim_sql
+    assert "partition by review_date" in reviews_sql
+    assert "cluster by facility_id, review_id" in reviews_sql
+    assert "cluster by facility_id, review_id" in ranks_sql

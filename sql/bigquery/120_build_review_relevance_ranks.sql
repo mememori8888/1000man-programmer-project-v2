@@ -1,6 +1,8 @@
 -- Build the clean relevance rank fact table from parsed SERP responses.
 
-create or replace table `${PROJECT_ID}.${DATASET}.fact_review_relevance_ranks` as
+create or replace table `${PROJECT_ID}.${DATASET}.fact_review_relevance_ranks`
+cluster by facility_id, review_id
+as
 select
   facility_id,
   review_id,

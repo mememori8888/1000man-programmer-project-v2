@@ -3,7 +3,9 @@
 --   1. {"snapshot_id": "...", "data": [ ...facility objects... ]}
 --   2. [ ...facility objects... ]
 
-create or replace table `${PROJECT_ID}.${DATASET}.dim_facilities` as
+create or replace table `${PROJECT_ID}.${DATASET}.dim_facilities`
+cluster by facility_type, facility_id
+as
 with source_rows as (
   select
     source_run_id,
