@@ -16,8 +16,8 @@ This project moves heavy matching and deduplication out of Python and into BigQu
 - `.github/workflows/serp-relevance-extract.yml` stores SERP responses as `serp_relevance` raw objects and loads them into `raw_serp_responses`.
 - `.github/workflows/serp-relevance-batch.yml` turns either a private-data facility CSV or BigQuery recent `fact_reviews` into a bounded SERP matrix, stores each response with the same raw object contract, then refreshes the SERP rank fact tables.
 - `.github/workflows/brightdata-extract.yml` keeps the BrightData result file inside the same job, stores it as a raw object, and only passes small metadata through GitHub outputs.
-- `elt-bigquery replay-gcs-raw` and `.github/workflows/raw-object-replay.yml` replay an existing GCS raw object plus its manifest into BigQuery without rerunning BrightData.
-- `elt-bigquery export-csv` and `.github/workflows/bigquery-export.yml` provide the compatibility path for users who still need CSV output from `fact_reviews` or `dim_facilities`.
+- `elt-bigquery replay-gcs-raw` and `.github/workflows/raw-object-replay.yml` replay an existing GCS raw object plus its manifest into BigQuery without rerunning BrightData, then optionally rerun the managed transform chain.
+- `elt-bigquery export-csv` and `.github/workflows/bigquery-export.yml` provide the compatibility path for users who still need CSV output from `fact_reviews`, `dim_facilities`, or `fact_review_relevance_ranks`.
 - `.github/workflows/preflight.yml` validates repository settings before paid or long-running workflows are launched.
 
 ## Next boundary
@@ -27,7 +27,7 @@ When `run_transform` is enabled, the same workflow immediately runs the managed 
 Before the raw insert, the extractor workflow runs `001_create_raw_tables.sql` with `create table if not exists`; this keeps the first production run from failing just because the raw tables have not been bootstrapped yet.
 The extractor workflow invokes `elt-raw-write` once with both local and optional GCS destinations. That preserves one manifest, one object name, and one SHA-256 across local artifacts, GCS, and the BigQuery raw row.
 
-The current BigQuery contract is intentionally simple: one raw object becomes one row with `raw_payload`, `source_run_id`, `raw_object_uri`, `payload_sha256`, and timestamps. Parsing into `raw_reviews_parsed`, `dim_facilities`, and `fact_reviews` is handled by SQL files in `sql/bigquery`.
+The current BigQuery contract is intentionally simple: one raw object becomes one row with `raw_payload`, `source_run_id`, `raw_object_uri`, `payload_sha256`, and timestamps. Parsing into `raw_reviews_parsed`, `dim_facilities`, `fact_reviews`, and `fact_review_relevance_ranks` is handled by SQL files in `sql/bigquery`.
 SERP relevance responses use the same contract through `raw_serp_responses`; `020_parse_raw_serp_responses.sql` and `120_build_review_relevance_ranks.sql` convert those raw responses into `fact_review_relevance_ranks` without changing the extractor.
 
 CSV compatibility output is also handled by BigQuery, not Python loops. BigQuery extract jobs write CSV shards directly to GCS, which keeps runner memory and disk usage independent of table size.

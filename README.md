@@ -203,7 +203,7 @@ where row_num = 1;
 2. `demo` の WebApp、IssueOps、GitHub Actions、主要 Python を v2 に移植する。
 3. Python の保存先を CSV 直更新から GCS raw 書き込みへ変える。
 4. GCS から BigQuery raw table へのロード処理を追加する。
-5. BigQuery SQL/dbt で `dim_facilities` と `fact_reviews` を作る。
+5. BigQuery SQL/dbt で `dim_facilities`, `fact_reviews`, `fact_review_relevance_ranks` を作る。
 6. 既存 CSV 出力が必要な利用者向けに、BigQuery から GCS へ CSV export する互換口を用意する。
 7. 既存 demo と v2 の同一入力で差分検証し、機能を損なっていないことを確認する。
 8. 参照されていない旧ファイルだけを整理する。

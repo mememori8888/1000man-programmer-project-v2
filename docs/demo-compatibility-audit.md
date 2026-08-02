@@ -10,7 +10,7 @@ Source inspected: `mememori8888/demo` at `e6a01b3` (`Build canonical Google Maps
 | `/run-facility`, `/run-reviews`, `/run-reviews-sequential`, `/run-reviews-relevance`, `/承認` | Parsed by `src/elt_v2/issue_ops.py` and routed by `.github/workflows/issue-ops-elt.yml` |
 | BrightData Dataset API extraction | Implemented in `elt-brightdata run-dataset` and `.github/workflows/brightdata-extract.yml` |
 | Raw artifacts | Preserved as raw object artifacts, with optional GCS upload |
-| CSV output compatibility | Implemented as BigQuery extract jobs to GCS via `.github/workflows/bigquery-export.yml` |
+| CSV output compatibility | Implemented as BigQuery extract jobs to GCS via `.github/workflows/bigquery-export.yml` for review, facility, and relevance-rank mart tables |
 | BigQuery transforms | Implemented via `sql/bigquery/*.sql` and `.github/workflows/bigquery-transform.yml` |
 | Legacy CSV vs v2 mart verification | Implemented via `.github/workflows/compatibility-audit.yml` and `elt-bigquery audit-csv-compat` |
 
@@ -27,3 +27,4 @@ Source inspected: `mememori8888/demo` at `e6a01b3` (`Build canonical Google Maps
 ## Next compatibility targets
 
 1. Run `.github/workflows/compatibility-audit.yml` after a real BrightData run and archive the generated report with the release evidence.
+2. Export `fact_reviews`, `dim_facilities`, and `fact_review_relevance_ranks` through `.github/workflows/bigquery-export.yml` and compare the delivered CSV shape with the old demo outputs.
