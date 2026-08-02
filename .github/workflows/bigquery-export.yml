@@ -1,0 +1,58 @@
+name: BigQuery CSV export
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: BigQuery project id
+        required: true
+      dataset:
+        description: BigQuery dataset
+        required: true
+      table:
+        description: BigQuery table to export
+        required: true
+        default: fact_reviews
+        type: choice
+        options:
+          - fact_reviews
+          - dim_facilities
+      destination_uri:
+        description: GCS URI for CSV output, for example gs://bucket/exports/fact_reviews-*.csv
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    env:
+      GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[gcp]"
+
+      - name: Authenticate to Google Cloud
+        if: env.GCP_SERVICE_ACCOUNT_JSON != ''
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ env.GCP_SERVICE_ACCOUNT_JSON }}
+
+      - name: Export table to CSV
+        run: |
+          elt-bigquery export-csv \
+            --project-id "${{ inputs.project_id }}" \
+            --dataset "${{ inputs.dataset }}" \
+            --table "${{ inputs.table }}" \
+            --destination-uri "${{ inputs.destination_uri }}"

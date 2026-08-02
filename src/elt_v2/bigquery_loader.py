@@ -34,6 +34,18 @@ class RawLoadPlan:
         return f"{self.project_id}.{self.dataset}.{self.table}"
 
 
+@dataclass(frozen=True)
+class CsvExportPlan:
+    project_id: str
+    dataset: str
+    table: str
+    destination_uri: str
+
+    @property
+    def table_id(self) -> str:
+        return f"{self.project_id}.{self.dataset}.{self.table}"
+
+
 def build_raw_table_row(*, plan: RawLoadPlan, raw_payload: str) -> dict[str, Any]:
     return {
         "source_run_id": plan.source_run_id,
@@ -83,6 +95,28 @@ def build_raw_load_plan(
         raw_object_uri=raw_object_uri,
         payload_sha256=str(manifest.get("sha256", "")),
         extracted_at=str(manifest["extracted_at"]),
+    )
+
+
+def build_csv_export_plan(
+    *,
+    project_id: str,
+    dataset: str,
+    table: str,
+    destination_uri: str,
+) -> CsvExportPlan:
+    _validate_identifier(project_id, "project_id", allow_dash=True)
+    _validate_identifier(dataset, "dataset")
+    _validate_identifier(table, "table")
+    if not destination_uri.startswith("gs://"):
+        raise ValueError("destination_uri must be a gs:// URI")
+    if not destination_uri.lower().endswith(".csv") and "*" not in destination_uri:
+        raise ValueError("destination_uri should end with .csv or include a wildcard for sharded CSV export")
+    return CsvExportPlan(
+        project_id=project_id,
+        dataset=dataset,
+        table=table,
+        destination_uri=destination_uri,
     )
 
 
@@ -136,6 +170,28 @@ def run_sql_files(paths: list[Path], *, project_id: str, dataset: str) -> list[d
         job_id = run_sql_file(path, project_id=project_id, dataset=dataset)
         results.append({"sql_file": str(path), "job_id": job_id})
     return results
+
+
+def export_table_to_gcs_csv(plan: CsvExportPlan) -> str:
+    try:
+        from google.cloud import bigquery
+    except ImportError as exc:
+        raise RuntimeError(
+            "google-cloud-bigquery is required. Install with: pip install .[gcp]"
+        ) from exc
+
+    client = bigquery.Client(project=plan.project_id)
+    job_config = bigquery.ExtractJobConfig(
+        destination_format=bigquery.DestinationFormat.CSV,
+        print_header=True,
+    )
+    extract_job = client.extract_table(
+        plan.table_id,
+        plan.destination_uri,
+        job_config=job_config,
+    )
+    extract_job.result()
+    return extract_job.job_id
 
 
 def _validate_identifier(value: str, name: str, *, allow_dash: bool = False) -> None:

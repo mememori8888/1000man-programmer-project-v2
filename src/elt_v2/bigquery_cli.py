@@ -6,7 +6,9 @@ from pathlib import Path
 
 from elt_v2.bigquery_loader import (
     TRANSFORM_SQL_FILES,
+    build_csv_export_plan,
     build_raw_load_plan,
+    export_table_to_gcs_csv,
     load_manifest_file,
     load_raw_payload_to_bigquery,
     render_sql_template,
@@ -45,6 +47,12 @@ def main(argv: list[str] | None = None) -> int:
     run_all_parser = subparsers.add_parser("run-all-sql", help="Run managed SQL files in dependency order.")
     run_all_parser.add_argument("--project-id", required=True)
     run_all_parser.add_argument("--dataset", required=True)
+
+    export_parser = subparsers.add_parser("export-csv", help="Export a BigQuery table to GCS as CSV.")
+    export_parser.add_argument("--project-id", required=True)
+    export_parser.add_argument("--dataset", required=True)
+    export_parser.add_argument("--table", required=True)
+    export_parser.add_argument("--destination-uri", required=True)
 
     list_parser = subparsers.add_parser("list-sql", help="List managed BigQuery SQL files.")
     list_parser.set_defaults(list_sql=True)
@@ -100,6 +108,23 @@ def main(argv: list[str] | None = None) -> int:
             dataset=args.dataset,
         )
         print(json.dumps({"jobs": results}, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "export-csv":
+        plan = build_csv_export_plan(
+            project_id=args.project_id,
+            dataset=args.dataset,
+            table=args.table,
+            destination_uri=args.destination_uri,
+        )
+        job_id = export_table_to_gcs_csv(plan)
+        print(
+            json.dumps(
+                {"job_id": job_id, "table_id": plan.table_id, "destination_uri": plan.destination_uri},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return 0
 
     parser.error(f"unsupported command: {args.command}")

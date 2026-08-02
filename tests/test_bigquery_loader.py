@@ -6,6 +6,7 @@ import pytest
 
 from elt_v2.bigquery_loader import (
     TRANSFORM_SQL_FILES,
+    build_csv_export_plan,
     build_raw_load_plan,
     build_raw_table_row,
     load_manifest_file,
@@ -119,6 +120,36 @@ def test_load_manifest_file_accepts_utf8_bom(tmp_path):
     manifest_path.write_text('{"dataset_kind":"reviews"}', encoding="utf-8-sig")
 
     assert load_manifest_file(manifest_path)["dataset_kind"] == "reviews"
+
+
+def test_builds_csv_export_plan():
+    plan = build_csv_export_plan(
+        project_id="project-123",
+        dataset="brightdata_raw",
+        table="fact_reviews",
+        destination_uri="gs://export-bucket/reviews/fact_reviews-*.csv",
+    )
+
+    assert plan.table_id == "project-123.brightdata_raw.fact_reviews"
+    assert plan.destination_uri == "gs://export-bucket/reviews/fact_reviews-*.csv"
+
+
+def test_rejects_non_gcs_csv_export_uri():
+    with pytest.raises(ValueError, match="gs://"):
+        build_csv_export_plan(
+            project_id="project-123",
+            dataset="brightdata_raw",
+            table="fact_reviews",
+            destination_uri="file:///tmp/fact_reviews.csv",
+        )
+
+    with pytest.raises(ValueError, match="csv"):
+        build_csv_export_plan(
+            project_id="project-123",
+            dataset="brightdata_raw",
+            table="fact_reviews",
+            destination_uri="gs://export-bucket/reviews/fact_reviews.json",
+        )
 
 
 def test_transform_sql_file_registry_includes_parse_steps():

@@ -183,7 +183,7 @@ where row_num = 1;
 3. Python の保存先を CSV 直更新から GCS raw 書き込みへ変える。
 4. GCS から BigQuery raw table へのロード処理を追加する。
 5. BigQuery SQL/dbt で `dim_facilities` と `fact_reviews` を作る。
-6. 既存 CSV 出力が必要な利用者向けに、BigQuery から CSV export する互換口を用意する。
+6. 既存 CSV 出力が必要な利用者向けに、BigQuery から GCS へ CSV export する互換口を用意する。
 7. 既存 demo と v2 の同一入力で差分検証し、機能を損なっていないことを確認する。
 8. 参照されていない旧ファイルだけを整理する。
 
@@ -198,6 +198,7 @@ where row_num = 1;
 - `.github/workflows/brightdata-extract.yml`: private data repo の CSV から BrightData Dataset API input items を作り、実取得する。
 - `.github/workflows/raw-elt-ingest.yml`: IssueOps または手動実行から raw object と manifest を生成する。
 - `.github/workflows/bigquery-transform.yml`: BigQuery SQL を単体または標準順序の `all` で手動実行する変換 workflow。
+- `.github/workflows/bigquery-export.yml`: `fact_reviews` または `dim_facilities` を GCS へ CSV export する互換 workflow。
 - `docs/webapp/`: v2 repo に Issue を作成する軽量 WebApp。
 - `sql/bigquery/`: BigQuery の raw table、raw payload 解析、mart table、レビュー重複排除 SQL。
 - `tests/`: raw object 生成と manifest 保存の単体テスト。
@@ -213,6 +214,12 @@ python -m elt_v2.cli `
   --local-output-root .\out
 
 python -m elt_v2.bigquery_cli list-sql
+
+python -m elt_v2.bigquery_cli export-csv `
+  --project-id your-gcp-project `
+  --dataset brightdata_raw `
+  --table fact_reviews `
+  --destination-uri gs://your-bucket/exports/fact_reviews-*.csv
 ```
 
 ## 不要・整理候補
