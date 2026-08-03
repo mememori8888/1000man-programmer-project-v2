@@ -31,3 +31,31 @@ def test_demo_compatibility_doc_lists_required_release_evidence():
     assert "elt_v2.evidence_cli validate" in doc
     assert "v2 release evidence validation" in doc
     assert "release-evidence-validation" in doc
+
+
+def test_bigquery_sql_guide_explains_all_sql_files_for_beginners():
+    doc = Path("docs/bigquery-sql-guide.md").read_text(encoding="utf-8")
+
+    assert "SQL 初心者向け解説" in doc
+    assert "raw layer" in doc
+    assert "staging layer" in doc
+    assert "mart layer" in doc
+    for filename in [
+        "001_create_raw_tables.sql",
+        "002_create_mart_tables.sql",
+        "010_parse_raw_reviews.sql",
+        "011_parse_raw_facilities.sql",
+        "020_parse_raw_serp_responses.sql",
+        "101_deduplicate_reviews.sql",
+        "120_build_review_relevance_ranks.sql",
+    ]:
+        assert filename in doc
+    for concept in [
+        "coalesce",
+        "unnest",
+        "row_number()",
+        "partition by",
+        "cluster by",
+        "SCD Type 1",
+    ]:
+        assert concept in doc
