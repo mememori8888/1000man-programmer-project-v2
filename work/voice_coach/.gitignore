@@ -1,0 +1,9 @@
+.venv/
+.venv_py39_old/
+__pycache__/
+*.pyc
+client_secret*.json
+*token*.json
+.env
+artifacts/*
+!artifacts/wav2mp3.original.ipynb

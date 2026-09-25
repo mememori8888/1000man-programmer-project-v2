@@ -1,0 +1,10 @@
+__pycache__/
+.venv/
+build/
+dist/
+node_modules/
+output/
+output_v2/
+deliverables/
+config.json
+*.pyc

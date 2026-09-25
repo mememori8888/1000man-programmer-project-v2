@@ -1,0 +1,9 @@
+{
+  "search_url": "https://www.qoo10.jp/s/?keyword=%E3%83%91%E3%83%B3%E3%83%84%20%E3%83%AC%E3%83%87%E3%82%A3%E3%83%BC%E3%82%B9",
+  "max_products": 10,
+  "headless": false,
+  "delay_seconds": 2.0,
+  "description": "商品説明をここに入力してください。",
+  "output_dir": "output",
+  "browser_channel": "chrome"
+}
