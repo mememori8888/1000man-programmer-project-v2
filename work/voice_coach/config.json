@@ -1,0 +1,101 @@
+{
+  "project": "eng-empire-498517-c6",
+  "model": "latest_flash",
+  "vertex_location": "global",
+  "drive_folder": "0AJ3Tsl0Aj8RyUk9PVA",
+  "read_calendars": [
+    "primary",
+    "8bl4ird5n4ac4vr7lf19bifano@group.calendar.google.com"
+  ],
+  "write_calendar": "primary",
+  "agent_registry": {
+    "voice_transcription": {"name": "アーカ", "role": "音声書記・忠実な文字起こし"},
+    "qa_coaching": {"name": "ミラー", "role": "音声メモの一問一答と振り返り"},
+    "thought_inbox": {"name": "ソーター", "role": "散らばった思考の分類と実行候補化"},
+    "daily_focus": {"name": "コンパス", "role": "日次の選択と集中"},
+    "weekly_focus": {"name": "ルート", "role": "週次レビューと翌週の航路設計"},
+    "monthly_focus": {"name": "クロニクル", "role": "月次行動分析と翌月重点の設定"},
+    "finance": {"name": "キャッシュナビ", "role": "残高・支払・借入の試算"},
+    "codex_progress": {"name": "タワー", "role": "Codex各タスクの進捗集約"},
+    "audio_cleanup": {"name": "スイーパー", "role": "検証済み音声の安全な整理"}
+  },
+  "timezone": "Asia/Tokyo",
+  "goals": [
+    {
+      "title": "ソロプレナーになる",
+      "horizon": "long_term",
+      "target": "一人で価値をつくり、顧客に届け、継続的に収益を生む仕組みを育てる",
+      "decision_lenses": [
+        "顧客価値",
+        "収益機会",
+        "再現性のある仕組み",
+        "自律性"
+      ]
+    }
+  ],
+  "coach_style": "一般型。穏やかで具体的。状況に応じて無理のない行動を最大3つ提案する。",
+  "history_days": 30,
+  "future_days": 7,
+  "max_files_per_run": 100,
+  "max_audio_bytes": 15000000,
+  "trash_processed_audio": true,
+  "max_calendar_bytes": 7000,
+  "auto_discover_latest_flash": true,
+  "model_candidates": [
+    "gemini-flash-latest",
+    "gemini-3.8-flash",
+    "gemini-3-flash-preview",
+    "gemini-2.5-flash"
+  ],
+  "process_lookback_days": 1,
+  "audio_processing_day": "current",
+  "upload_day_cutoff_hour": 5,
+  "transcript_context_days": 1,
+  "inbox_folder_id": "0AJ3Tsl0Aj8RyUk9PVA",
+  "inbox_document_ids": [
+    "176yprKHEf-Y1yvvsG7aJXFbbum0emvqGf8lv15mKlvU"
+  ],
+  "task_list_title": "マイタスク",
+  "max_primary_tasks": 1,
+  "max_support_tasks": 2,
+  "write_google_tasks": true,
+  "source_documents_read_only": true,
+  "thought_voice_lookback_days": 0,
+  "focus_agent": {
+    "enabled": true,
+    "calendar_ids": [
+      "primary",
+      "8bl4ird5n4ac4vr7lf19bifano@group.calendar.google.com"
+    ],
+    "read_all_google_tasks": true,
+    "completed_task_scope": "all",
+    "completed_task_lookback_days": 7,
+    "calendar_lookback_days": 14,
+    "daily_calendar_lookback_days": 7,
+    "daily_immediate_horizon_days": 3,
+    "short_term_horizon_days": 21,
+    "medium_term_horizon_days": 90,
+    "calendar_horizon_days": 90,
+    "daily_focus_horizon_days": 90,
+    "coach_profile": "general_focus_coach",
+    "agent_identity": {
+      "name": "コンパス",
+      "role": "自律学習型AIエージェント",
+      "mission": "行動ログから仮説を更新し、短期の集中と中期の航路を両立させる",
+      "principle": "ユーザーが船長、コンパスは観測と実験を担うナビゲーター"
+    },
+    "create_focus_events": true,
+    "modify_source_tasks": false,
+    "max_focus_blocks_per_run": 3
+  },
+  "finance_simulation": {
+    "enabled": true,
+    "lookback_days": 365,
+    "calendar_future_days": 365,
+    "forecast_days": 30,
+    "payoff_horizon_days": 3650,
+    "safety_reserve_yen": 0,
+    "ml_min_history_days": 60,
+    "ml_horizon_days": 30
+  }
+}
