@@ -791,6 +791,27 @@ def calendar_horizon(event, today, tz, immediate_days, short_days):
     return "中期"
 
 
+def compact_focus_calendar(events):
+    """Keep all events while bounding long descriptions sent to Gemini."""
+    result = []
+    for event in events:
+        item = dict(event)
+        description = str(item.get("description") or "")
+        horizon = item.get("planning_horizon")
+        if horizon in {"今日", "直近"}:
+            limit = 1000
+        elif horizon == "短期":
+            limit = 300
+        else:
+            limit = 80
+        item["description_sha256"] = hashlib.sha256(description.encode()).hexdigest() if description else ""
+        if len(description) > limit:
+            item["description"] = description[:limit] + "…（説明を省略）"
+            item["description_truncated"] = True
+        result.append(item)
+    return result
+
+
 def learning_profile(focus, previous, update, today):
     """Keep a small, explicit hypothesis memory across daily focus runs."""
     previous = previous if isinstance(previous, dict) else {}
@@ -847,6 +868,7 @@ def build_focus_context(config, store, workspace, today, weekly=False, now=None)
     for event in calendar:
         event["planning_horizon"] = calendar_horizon(
             event, today, tz, int(focus["daily_immediate_horizon_days"]), int(focus["short_term_horizon_days"]))
+    calendar = compact_focus_calendar(calendar)
     codex_progress = (store.read(f"codex_progress/{today.isoformat()}.json") or
                       store.read("codex_progress/latest.json") or {})
     previous_learning = store.read("focus_learning/latest.json", {})

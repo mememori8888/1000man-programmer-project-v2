@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 from types import SimpleNamespace
-from app import Gemini, Workspace, cleanup_pairs_for_processed_audio, coach_units, focus_block_event, focus_summary_event, model_candidates, run, run_finance, run_focus
+from app import Gemini, Workspace, cleanup_pairs_for_processed_audio, coach_units, compact_focus_calendar, focus_block_event, focus_summary_event, model_candidates, run, run_finance, run_focus
 
 
 class MemoryStore:
@@ -223,6 +223,22 @@ class CoachCoverageTest(unittest.TestCase):
                          ['reflection', 'reflection', 'questions', 'questions', 'questions'])
         self.assertEqual([unit['kind'] for unit in units],
                          ['reflection', 'reflection', 'question', 'question', 'reflection'])
+
+
+class FocusContextCompactionTest(unittest.TestCase):
+    def test_keeps_every_event_and_compacts_only_long_descriptions(self):
+        events = [
+            {"id": "today", "planning_horizon": "今日", "description": "a" * 2100},
+            {"id": "history", "planning_horizon": "振り返り", "description": "b" * 900},
+            {"id": "short", "planning_horizon": "短期", "description": "短い"},
+        ]
+        compacted = compact_focus_calendar(events)
+        self.assertEqual([item["id"] for item in compacted], ["today", "history", "short"])
+        self.assertTrue(compacted[0]["description_truncated"])
+        self.assertTrue(compacted[1]["description_truncated"])
+        self.assertNotIn("description_truncated", compacted[2])
+        self.assertEqual(len(compacted[0]["description_sha256"]), 64)
+        self.assertEqual(events[0]["description"], "a" * 2100)
 
 
 class PipelineTest(unittest.TestCase):

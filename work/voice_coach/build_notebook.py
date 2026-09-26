@@ -34,6 +34,12 @@ JOBS = {
     "finance": "voice-coach-finance",
     "daily_focus": "voice-coach-daily-focus",
     "weekly_focus": "voice-coach-weekly-focus",
+    "monthly_focus": "voice-coach-monthly-focus",
+}
+RUN_SEQUENCES = {
+    "daily_all": ["voice", "finance", "daily_focus"],
+    "weekly_all": ["voice", "finance", "daily_focus", "weekly_focus"],
+    "monthly_all": ["monthly_focus", "voice", "finance", "daily_focus"],
 }
 credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
 session = AuthorizedSession(credentials)
@@ -87,27 +93,39 @@ if SAVE_GOALS:
     print("目標を保存しました")
 '''), cell('markdown', '''## 手動実行
 
-`RUN_TARGET` を選んで実行します。`finance` は財務シミュレーション、`voice` は音声処理、`daily_focus` は今日の選択と集中、`weekly_focus` は週次レビューです。再実行で同じ日のイベントを増やさず、同じイベントを更新します。
-'''), cell('code', '''RUN_TARGET = "finance"  # "voice", "finance", "daily_focus", "weekly_focus"
-job = JOBS[RUN_TARGET]
-url = f"https://run.googleapis.com/v2/projects/{PROJECT}/locations/{REGION}/jobs/{job}:run"
-response = session.post(url, json={}, timeout=60)
-response.raise_for_status()
-operation = response.json()
-operation_url = "https://run.googleapis.com/v2/" + operation["name"]
-print("実行を開始しました")
-for _ in range(60):
-    status = session.get(operation_url, timeout=60)
-    status.raise_for_status()
-    operation = status.json()
-    if operation.get("done"):
-        if operation.get("error"):
-            raise RuntimeError("処理に失敗しました。Cloud Runの実行詳細を確認してください。")
-        print("処理完了。Googleカレンダーの音声メモ、今日のコーチ、選択と集中イベントを確認してください。")
-        break
-    time.sleep(10)
-else:
-    print("処理は継続中です。Cloud Runの実行履歴を確認してください。")
+`RUN_TARGET` を選んで実行します。通常は `daily_all` のまま実行してください。音声処理、財務、今日の選択と集中をこの順番で実行します。金曜日は `weekly_all`、毎月1日は `monthly_all` を選べます。個別実行は `voice`、`finance`、`daily_focus`、`weekly_focus`、`monthly_focus` を指定します。再実行しても同じ日のイベントを増やさず、同じイベントを更新します。
+'''), cell('code', '''RUN_TARGET = "daily_all"
+
+def run_job(target):
+    job = JOBS[target]
+    url = f"https://run.googleapis.com/v2/projects/{PROJECT}/locations/{REGION}/jobs/{job}:run"
+    response = session.post(url, json={}, timeout=60)
+    response.raise_for_status()
+    operation = response.json()
+    operation_url = "https://run.googleapis.com/v2/" + operation["name"]
+    print(f"[{target}] 実行開始: {job}")
+    for _ in range(90):
+        status = session.get(operation_url, timeout=60)
+        status.raise_for_status()
+        operation = status.json()
+        if operation.get("done"):
+            if operation.get("error"):
+                message = operation["error"].get("message", "詳細不明")
+                raise RuntimeError(f"[{target}] 失敗: {message}")
+            print(f"[{target}] 完了")
+            return operation.get("response", {})
+        time.sleep(10)
+    raise TimeoutError(f"[{target}] 15分以内に完了しませんでした。Cloud Runの実行履歴を確認してください。")
+
+targets = RUN_SEQUENCES.get(RUN_TARGET, [RUN_TARGET])
+unknown = [target for target in targets if target not in JOBS]
+if unknown:
+    raise ValueError(f"不明なRUN_TARGET: {unknown}")
+
+for target in targets:
+    run_job(target)
+
+print("日次処理が完了しました。Googleカレンダーの音声メモ、今日のコーチ、財務、選択と集中を確認してください。")
 ''')]
 notebook = {"nbformat": 4, "nbformat_minor": 5,
             "metadata": {"colab": {"name": "音声メモ_Gemini_GCP.ipynb"},
