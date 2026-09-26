@@ -68,8 +68,8 @@
       "8bl4ird5n4ac4vr7lf19bifano@group.calendar.google.com"
     ],
     "read_all_google_tasks": true,
-    "completed_task_scope": "all",
-    "completed_task_lookback_days": 7,
+    "completed_task_scope": "recent",
+    "completed_task_lookback_days": 365,
     "calendar_lookback_days": 14,
     "daily_calendar_lookback_days": 7,
     "daily_immediate_horizon_days": 3,

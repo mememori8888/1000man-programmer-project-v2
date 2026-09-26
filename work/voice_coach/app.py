@@ -343,9 +343,19 @@ class Workspace:
             for task in self.tasks(tasklist["id"], show_completed=False):
                 active.append({**tasklist_info, **task})
             if include_all_completed or include_completed_since:
-                for task in self.tasks(tasklist["id"], show_completed=True,
-                                       completed_min=None if include_all_completed else include_completed_since):
+                # Google Tasks has returned no rows for completedMin with some
+                # hidden/recurring histories. Fetch completion history once and
+                # apply the requested boundary deterministically here.
+                for task in self.tasks(tasklist["id"], show_completed=True):
                     if task.get("status") == "completed":
+                        if include_completed_since and not include_all_completed:
+                            completed_value = task.get("completed", "")
+                            try:
+                                completed_at = datetime.fromisoformat(completed_value.replace("Z", "+00:00"))
+                            except (TypeError, ValueError):
+                                continue
+                            if completed_at < include_completed_since.astimezone(completed_at.tzinfo):
+                                continue
                         completed.append({**tasklist_info, **task})
         return {"active": active, "completed": completed}
 
@@ -852,7 +862,7 @@ def build_focus_context(config, store, workspace, today, weekly=False, now=None)
     end = datetime.combine(today + timedelta(days=horizon + 1), time.min, tz)
     completed_since = None
     include_all_completed = focus.get("completed_task_scope", "all") == "all"
-    if weekly and not include_all_completed:
+    if not include_all_completed:
         completed_since = datetime.combine(today - timedelta(days=int(focus["completed_task_lookback_days"])), time.min, tz)
     state = store.read("state.json", {"files": {}, "published": {}, "advice": {}})
     records = list(state.get("files", {}).values())
